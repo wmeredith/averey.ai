@@ -1,0 +1,8 @@
+node_modules
+dist
+.averey-state.json
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store

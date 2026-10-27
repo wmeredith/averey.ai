@@ -1,0 +1,22 @@
+{
+  "name": "averey",
+  "version": "0.1.0",
+  "description": "Averey.ai: an average intelligence harness. Wraps any LLM with a simulated average human worker (fatigue, moods, breaks, sick days, lossy memory).",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "simulate": "npm run -s build && node dist/cli/simulate.js",
+    "hello": "npm run -s build && node --env-file=.env dist/cli/hello.js"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.8"
+  }
+}
