@@ -173,6 +173,17 @@ const manager: TaskEffect = (ctx) => {
   };
 };
 
+/** A shared job: someone else will surely handle the hard part. */
+const socialLoafing: TaskEffect = (ctx) => {
+  if (!ctx.input.shared) return null;
+  return {
+    hints: [
+      "This is a shared job with other people on it. You assume someone else will take care of the hard parts, so you do the easy part and leave the rest vague.",
+    ],
+    trace: { loafing: true },
+  };
+};
+
 export const TASK_EFFECTS = Object.freeze({
   notification,
   reuse,
@@ -181,6 +192,7 @@ export const TASK_EFFECTS = Object.freeze({
   "status-inflation": statusInflation,
   "sunk-cost": sunkCost,
   manager,
+  "social-loafing": socialLoafing,
 } satisfies Record<string, TaskEffect>);
 
 export interface ApplyTaskEffects {

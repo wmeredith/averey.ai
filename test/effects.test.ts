@@ -436,3 +436,31 @@ describe("manager audience", () => {
     expect(r.trace.durationMinutes).toBeCloseTo(12, 5);
   });
 });
+
+describe("social loafing", () => {
+  const on = { enable: ["social-loafing"] };
+
+  it("leaves the hard part to someone else on a shared job", async () => {
+    const { averey, provider } = makeAverey({}, on);
+    const r = await averey.run({ task: "Build the deck.", shared: true });
+    expect(r.trace.loafing).toBe(true);
+    expect(systemOf(provider)).toContain("someone else will take care of the hard parts");
+    const solo = await averey.run({ task: "Build the deck." });
+    expect(solo.trace.loafing).toBeUndefined();
+  });
+
+  it("happens on a team of three or more, not a pair", async () => {
+    const trio = teamOf(["a", "b", "c"], {}, ["social-loafing"]);
+    const r = await trio.team.send("a", "b", "Build the deck.");
+    expect(r.trace.loafing).toBe(true);
+
+    const pair = teamOf(["a", "b"], {}, ["social-loafing"]);
+    expect((await pair.team.send("a", "b", "Build the deck.")).trace.loafing).toBeUndefined();
+  });
+
+  it("lets the caller say a job is not shared", async () => {
+    const trio = teamOf(["a", "b", "c"], {}, ["social-loafing"]);
+    const r = await trio.team.send("a", "b", "Build the deck.", { shared: false });
+    expect(r.trace.loafing).toBeUndefined();
+  });
+});

@@ -113,8 +113,9 @@ export class AvereyTeam {
     const now = worker.clock.now();
     const extraHints = [...(options.extraHints ?? [])];
     // What the team knows about this message, for the traits that need an audience.
-    const context: Pick<RunInput, "audience"> = {
+    const context: Pick<RunInput, "audience" | "shared"> = {
       audience: options.audience ?? (sender.labels.role === "manager" ? "manager" : undefined),
+      shared: options.shared ?? (this.members.size > 2 ? true : undefined),
     };
 
     if (worker.availability(now).available) {

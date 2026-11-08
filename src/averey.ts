@@ -68,6 +68,8 @@ export interface RunInput {
   extraHints?: string[];
   /** Who is asking. A manager makes Averey hedge and take longer. */
   audience?: "manager" | "peer";
+  /** A job shared with other people, so Averey assumes someone else has the hard part. */
+  shared?: boolean;
   /** Cancels the model call. */
   signal?: AbortSignal;
 }
@@ -104,6 +106,8 @@ export interface Trace {
   sunkCost?: boolean;
   /** Who was asking, when it changed how Averey worked. */
   audience?: "manager";
+  /** Averey assumed someone else would handle the hard part. */
+  loafing?: boolean;
   typos?: number;
   /** True when the reply was cut off by the token limit. */
   truncated?: boolean;
