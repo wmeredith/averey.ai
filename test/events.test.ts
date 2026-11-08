@@ -261,7 +261,7 @@ describe("life events: config checks", () => {
 describe("default office events", () => {
   const byId = (id: string) => DEFAULT_CONFIG.events.find((e) => e.id === id)!;
   const forced = (id: string): LifeEventConfig => ({ ...byId(id), chancePerDay: 1 });
-  const ids = ["snack", "package", "sso", "parent-call", "hot-desk", "cake"];
+  const ids = ["snack", "package", "sso", "parent-call", "hot-desk", "cake", "fish"];
 
   it("ships all of them next to the puzzle break", () => {
     expect(DEFAULT_CONFIG.events.map((e) => e.id)).toEqual(["games", ...ids]);
@@ -325,6 +325,17 @@ describe("default office events", () => {
     expect(averey.status().modifiers.find((m) => m.id === "cake")?.label).toContain("aftermath");
     clock.set(block.end + 50 * MIN);
     expect(averey.status().modifiers.map((m) => m.id)).not.toContain("cake");
+  });
+
+  it("fish keeps Averey at their desk but in a foul mood", async () => {
+    const { averey, clock } = makeAverey({ events: [forced("fish")] });
+    const block = blockOf(averey, "fish")!;
+    clock.set(block.start + 5 * MIN);
+    expect(averey.availability().available).toBe(true);
+    expect(averey.status().performance).toBeCloseTo(0.96, 5);
+    const r = await averey.run({ task: "do a thing", effortMinutes: 1 });
+    expect(r.status === "ok" && r.trace.systemPrompt).toContain("microwaved fish");
+    expect(r.status === "ok" && r.trace.systemPrompt).toContain("hostile");
   });
 
   it("each away event answers in its own words", async () => {

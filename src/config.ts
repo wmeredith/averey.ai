@@ -317,6 +317,15 @@ export const DEFAULT_CONFIG: AvereyConfig = {
         "Singing happy birthday, give me a few.",
       ],
     },
+    {
+      id: "fish",
+      label: "someone microwaved fish",
+      chancePerDay: 0.05,
+      minutes: [20, 40],
+      away: false,
+      multiplier: 0.96,
+      hint: "Someone just microwaved fish in the office kitchen and the whole floor reeks. You are in a terrible mood: curt, hostile, and short with everyone.",
+    },
   ],
 
   hours: { capHours: 8, windowHours: 24, decayK: 0.5 },

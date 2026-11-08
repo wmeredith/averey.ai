@@ -155,7 +155,7 @@ describe("schedule", () => {
   it("chains back-to-back blocks into one return time", () => {
     const s = new Schedule("chain", cfg);
     for (let d = 20000; d < 20050; d++) {
-      for (const b of s.plan(d).blocks) {
+      for (const b of s.plan(d).blocks.filter((x) => x.away)) {
         const a = s.availability(b.start + 1);
         expect(a.available).toBe(false);
         if (!a.available) {
@@ -164,5 +164,17 @@ describe("schedule", () => {
         }
       }
     }
+  });
+
+  it("stays available through blocks Averey is present for", () => {
+    const s = new Schedule("present", cfg);
+    let seen = 0;
+    for (let d = 20000; d < 20400; d++) {
+      for (const b of s.plan(d).blocks.filter((x) => !x.away)) {
+        seen++;
+        expect(s.availability(b.start + 1).available).toBe(true);
+      }
+    }
+    expect(seen).toBeGreaterThan(0);
   });
 });
