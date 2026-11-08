@@ -58,6 +58,7 @@ const res = await averey.runWhenAvailable(
 | Friday after 3 PM, checked out (-18%) | local weekday and hour | `friday` |
 | Monday before 11 AM, rusty (-10%) | local weekday and hour | `monday` |
 | A phone buzz mid-request drops one rule from the task | task effect, 12% of runs, `trace.notification` | `notification` |
+| Reuses its last answer for a similar request, and half-updates it | `state.recentWork`, word overlap, `trace.reusedFrom` | `reuse` |
 | Misremembers tasks | lossy memory | n/a |
 | Defensive after being wrong, apologizes a day or two later | `reportError()` | `defensive`, `apology` |
 | Implicit bias | see below | n/a |

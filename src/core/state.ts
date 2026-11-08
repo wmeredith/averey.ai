@@ -30,6 +30,14 @@ export interface MemoryItem {
   distortions: string[];
 }
 
+export interface RecentWork {
+  id: string;
+  task: string;
+  /** What Averey handed back, typos and all. */
+  output: string;
+  at: number;
+}
+
 export interface WorkerState {
   version: 1;
   /** dayIndex -> first engagement timestamp that day. */
@@ -42,6 +50,8 @@ export interface WorkerState {
   /** Words Averey has been told the meaning of. */
   learnedWords: Record<string, string>;
   memory: MemoryItem[];
+  /** The last few finished jobs, for copy-from-last-time. */
+  recentWork: RecentWork[];
 }
 
 export function initialState(): WorkerState {
@@ -54,6 +64,7 @@ export function initialState(): WorkerState {
     exposedUntil: 0,
     learnedWords: {},
     memory: [],
+    recentWork: [],
   };
 }
 

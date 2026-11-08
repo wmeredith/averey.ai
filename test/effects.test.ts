@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { Rng } from "../src/index.js";
+import { Averey, InMemoryStore, MockProvider, Rng, VirtualClock } from "../src/index.js";
+import { initialState, type WorkerState } from "../src/core/state.js";
 import { dropConstraintDetailed } from "../src/persona/distort.js";
-import { makeAverey } from "./helpers.js";
+import { similarity } from "../src/persona/effects.js";
+import { MONDAY_9AM, makeAverey, quietConfig } from "./helpers.js";
 
 /** The text of the last user message the model was sent. */
 function sentTask(provider: ReturnType<typeof makeAverey>["provider"]): string {
@@ -111,5 +113,92 @@ describe("notification hangover", () => {
   it("rejects the id as unknown only when it really is unknown", () => {
     expect(() => makeAverey({ disabledModifiers: ["notification"] })).not.toThrow();
     expect(() => makeAverey({ disabledModifiers: ["notifcation"] })).toThrow(/Unknown modifier id/);
+  });
+});
+
+describe("copy-from-last-time", () => {
+  const on = { enable: ["reuse"] };
+  const first = "Summarize this meeting in three bullet points for the sales team.";
+  const similar = "Summarize this meeting in four bullet points for the sales team.";
+
+  async function answered(config = {}, options: Parameters<typeof makeAverey>[1] = on) {
+    const made = makeAverey(config, {
+      ...options,
+      provider: new MockProvider({ respond: () => "- Sales are up\n- Costs are flat\n- Hiring paused" }),
+    });
+    const r = await made.averey.run({ task: first, taskId: "one" });
+    expect(r.status).toBe("ok");
+    return made;
+  }
+
+  it("hands back the earlier answer for a similar request", async () => {
+    const { averey, provider } = await answered({ reuse: { chance: 1 } });
+    const r = await averey.run({ task: similar });
+    expect(r.trace.reusedFrom).toBe("one");
+    const sent = sentTask(provider);
+    expect(sent.startsWith(similar)).toBe(true);
+    expect(sent).toContain("already wrote something for a similar request");
+    expect(sent).toContain("- Sales are up");
+  });
+
+  it("does not reuse for an unrelated request", async () => {
+    const { averey, provider } = await answered({ reuse: { chance: 1 } });
+    const r = await averey.run({ task: "Draft an email asking everyone for their timesheets." });
+    expect(r.trace.reusedFrom).toBeUndefined();
+    expect(sentTask(provider)).not.toContain("Sales are up");
+  });
+
+  it("skips a similar request when the roll fails", async () => {
+    const { averey, provider } = await answered({ reuse: { chance: 0 } });
+    const r = await averey.run({ task: similar });
+    expect(r.trace.reusedFrom).toBeUndefined();
+    expect(sentTask(provider)).toBe(similar);
+  });
+
+  it("always reuses the task it continues, even if it looks different", async () => {
+    const { averey, provider } = await answered({ reuse: { chance: 0 } });
+    const r = await averey.run({ task: "Now make it funnier.", continues: "one" });
+    expect(r.trace.reusedFrom).toBe("one");
+    expect(sentTask(provider)).toContain("already wrote something for an earlier request");
+    expect(sentTask(provider)).toContain("- Sales are up");
+  });
+
+  it("keeps only the last few jobs", async () => {
+    const { averey } = makeAverey({ reuse: { maxItems: 2 } }, on);
+    for (let i = 0; i < 4; i++) await averey.run({ task: `Unique job number ${i} about topic${i}`, taskId: `t${i}` });
+    expect(averey.snapshot().recentWork.map((w) => w.id)).toEqual(["t2", "t3"]);
+  });
+
+  it("does not remember jobs that did not finish", async () => {
+    const { averey } = makeAverey(
+      { comprehension: { enabled: true, askChance: 1, maxQuestions: 1 } },
+      on,
+    );
+    const r = await averey.run({ task: "Please optimize the authentication infrastructure documentation." });
+    expect(r.status).toBe("clarification");
+    expect(averey.snapshot().recentWork).toEqual([]);
+  });
+
+  it("loads old saved state that has no recentWork", async () => {
+    const store = new InMemoryStore();
+    const old = { ...initialState() } as Partial<WorkerState>;
+    delete old.recentWork;
+    store.save(old as WorkerState);
+    const averey = new Averey({
+      provider: new MockProvider(),
+      clock: new VirtualClock(MONDAY_9AM),
+      config: quietConfig({}, ["reuse"]),
+      store,
+    });
+    expect(averey.snapshot().recentWork).toEqual([]);
+    expect((await averey.run({ task: first })).status).toBe("ok");
+    expect(averey.snapshot().recentWork).toHaveLength(1);
+  });
+
+  it("scores word overlap", () => {
+    expect(similarity(first, first)).toBe(1);
+    expect(similarity(first, similar)).toBeGreaterThan(0.5);
+    expect(similarity(first, "Draft an email about timesheets")).toBeLessThan(0.2);
+    expect(similarity("", first)).toBe(0);
   });
 });

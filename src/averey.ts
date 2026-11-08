@@ -14,6 +14,7 @@ import {
 import {
   type DefensiveState,
   InMemoryStore,
+  type RecentWork,
   type StateStore,
   type WorkerState,
   hoursWorkedIn,
@@ -89,6 +90,8 @@ export interface Trace {
   memory?: RecallResult;
   /** Set when a phone buzz interrupted the request. */
   notification?: { dropped: boolean; removed?: string };
+  /** Id of the earlier task whose answer Averey started from. */
+  reusedFrom?: string;
   typos?: number;
   /** True when the reply was cut off by the token limit. */
   truncated?: boolean;
@@ -301,6 +304,8 @@ export class Averey {
 
       const effects = applyTaskEffects({
         text: understood.text,
+        input,
+        state: this.state,
         config: this.config,
         performance,
         now,
@@ -330,6 +335,7 @@ export class Averey {
         modifiers,
         trace,
       );
+      this.keepWork({ id: taskId, task: input.task, output: typos.text, at: now });
       return { status: "ok", output: typos.text, taskId, trace };
     } finally {
       this.persist();
@@ -459,6 +465,7 @@ export class Averey {
     if (recalled) {
       parts.push(`What you remember about the earlier job: ${recalled.recalled}`);
     }
+    parts.push(...effects.notes);
     if (input.context) {
       parts.push(
         `Background:\n${clampText(input.context, levers.contextFraction)}`,
@@ -475,6 +482,13 @@ export class Averey {
       maxTokens: this.provider.capabilities.maxTokens ? levers.maxTokens : undefined,
       signal: input.signal,
     };
+  }
+
+  /** Keeps the most recent finished jobs so a similar request can reuse one. */
+  private keepWork(work: RecentWork): void {
+    const kept = this.state.recentWork.filter((w) => w.id !== work.id);
+    kept.push(work);
+    this.state.recentWork = kept.slice(-this.config.reuse.maxItems);
   }
 
   /** Logs the work, clears a delivered apology, and advances a virtual clock. */
