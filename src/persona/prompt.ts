@@ -24,7 +24,7 @@ export function buildSystemPrompt(parts: PromptParts): string {
   return lines.join("\n");
 }
 
-const AWAY_LINES: Record<AwayReason, string[]> = {
+const AWAY_LINES: Record<string, string[]> = {
   bathroom: [
     "Be right back, I'm in the bathroom.",
     "Stepped away for a minute.",
@@ -48,12 +48,23 @@ const AWAY_LINES: Record<AwayReason, string[]> = {
   asleep: ["I'm not up yet.", "I'm asleep right now."],
 };
 
+/** For a life event that brought no lines of its own. */
+const GENERIC_AWAY_LINES = [
+  "Give me a few minutes, I'm tied up.",
+  "Something came up, I'll be right back.",
+];
+
 export function awayMessage(
   reason: AwayReason,
   backAtLabel: string,
   rng: Rng,
+  /** Lines by life event id, from the config. */
+  eventLines: Readonly<Record<string, string[]>> = {},
 ): string {
-  return `${rng.pick(AWAY_LINES[reason])} Back around ${backAtLabel}.`;
+  const lines =
+    (Object.hasOwn(eventLines, reason) ? eventLines[reason] : undefined) ??
+    (Object.hasOwn(AWAY_LINES, reason) ? AWAY_LINES[reason] : undefined);
+  return `${rng.pick(lines?.length ? lines : GENERIC_AWAY_LINES)} Back around ${backAtLabel}.`;
 }
 
 /** Swap, drop, or double a letter in some words. Leaves code and URLs alone. */

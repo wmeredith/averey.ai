@@ -21,6 +21,7 @@ export {
   validateConfig,
   type AvereyConfig,
   type BiasWeight,
+  type LifeEventConfig,
   type DeepPartial,
 } from "./config.js";
 export { type Clock, SystemClock, VirtualClock } from "./core/clock.js";

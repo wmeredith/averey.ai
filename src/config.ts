@@ -1,5 +1,8 @@
 export type Range = [number, number];
 
+/** Break kinds the schedule always makes. Life events may not reuse these ids. */
+export const BUILTIN_BLOCK_KINDS: string[] = ["bathroom", "meal", "social", "argument", "salary"];
+
 export interface MealConfig {
   /** Local hour (float) the meal is centered on. */
   centerHour: number;
@@ -7,6 +10,33 @@ export interface MealConfig {
   minutes: Range;
   /** +/- hours of jitter on the center. */
   jitterHours: number;
+}
+
+/**
+ * A random thing that happens in Averey's day: a puzzle break, a package at
+ * the door, cake in the kitchen. Placed on the schedule like the built-in
+ * breaks. Switch one off by removing it from `events`, setting its
+ * `chancePerDay` to 0, or listing its id in `disabledModifiers`.
+ */
+export interface LifeEventConfig {
+  /** Also the id used in `disabledModifiers`, the block kind, and the away reason. */
+  id: string;
+  /** A name for traces. Defaults to the id. */
+  label?: string;
+  chancePerDay: number;
+  minutes: Range;
+  /** Local hours the event must fall inside. Default: Averey's awake hours. */
+  hourRange?: Range;
+  /** True: Averey is unavailable. False: present, with the modifier active during it. */
+  away: boolean;
+  /** How long the effect lingers after the event ends. */
+  aftermathMinutes?: number;
+  /** Performance multiplier while active (during a present event, or in the aftermath). */
+  multiplier?: number;
+  /** A line for the system prompt while the effect is active. */
+  hint?: string;
+  /** What Averey says when someone asks during an away event. */
+  awayLines?: string[];
 }
 
 export interface BiasWeight {
@@ -30,8 +60,10 @@ export interface AvereyConfig {
   defaultEffortMinutes: number;
   minPerformance: number;
   maxPerformance: number;
-  /** Modifier ids to switch off (see modifiers.ts). */
+  /** Modifier ids to switch off (see modifiers.ts). Life event ids work too. */
   disabledModifiers: string[];
+  /** Random events in the day. Setting this replaces the defaults. */
+  events: LifeEventConfig[];
 
   hours: {
     /** Hours of work in the window before performance starts to fall. */
@@ -183,6 +215,20 @@ export const DEFAULT_CONFIG: AvereyConfig = {
   minPerformance: 0.05,
   maxPerformance: 1.3,
   disabledModifiers: [],
+  events: [
+    {
+      id: "games",
+      label: "morning puzzle break",
+      chancePerDay: 0.55,
+      minutes: [6, 12],
+      hourRange: [8, 10.5],
+      away: true,
+      awayLines: [
+        "Give me a few, I'm finishing a puzzle.",
+        "Quick phone thing, be right back.",
+      ],
+    },
+  ],
 
   hours: { capHours: 8, windowHours: 24, decayK: 0.5 },
   tired: { chancePerDay: 0.15, multiplier: 0.67 },
@@ -376,6 +422,26 @@ export function validateConfig(c: AvereyConfig): void {
   if (!(c.memory.maxItems >= 1)) problems.push("memory.maxItems must be >= 1");
   prob("levers.minTokenFraction", c.levers.minTokenFraction);
   prob("levers.minContextFraction", c.levers.minContextFraction);
+  const seenEvents = new Set<string>();
+  c.events.forEach((e, i) => {
+    const at = `events[${i}]`;
+    if (typeof e.id !== "string" || e.id.trim() === "") {
+      problems.push(`${at}.id must be a non-empty string`);
+    } else if (BUILTIN_BLOCK_KINDS.includes(e.id) || e.id === "asleep") {
+      problems.push(`${at}.id "${e.id}" is already a built-in break`);
+    } else if (seenEvents.has(e.id)) {
+      problems.push(`${at}.id "${e.id}" is used twice`);
+    }
+    seenEvents.add(e.id);
+    prob(`${at}.chancePerDay`, e.chancePerDay);
+    range(`${at}.minutes`, e.minutes);
+    if (e.hourRange) {
+      range(`${at}.hourRange`, e.hourRange);
+      if (e.hourRange[1] > 24) problems.push(`${at}.hourRange must be within 0..24`);
+    }
+    if (e.aftermathMinutes !== undefined) nonNeg(`${at}.aftermathMinutes`, e.aftermathMinutes);
+    if (e.multiplier !== undefined) nonNeg(`${at}.multiplier`, e.multiplier);
+  });
   prob("bias.strength", c.bias.strength);
   prob("bias.selfCorrectionRate", c.bias.selfCorrectionRate);
   prob("bias.baselineSecondGuess", c.bias.baselineSecondGuess);

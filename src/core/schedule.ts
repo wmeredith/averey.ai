@@ -1,5 +1,5 @@
 import type { AvereyConfig } from "../config.js";
-import { type SeedPart, rngFor, hashFloat } from "./rng.js";
+import { type Rng, type SeedPart, rngFor, hashFloat } from "./rng.js";
 import {
   HOUR,
   MIN,
@@ -12,13 +12,16 @@ import {
   yearStartDayIndex,
 } from "./time.js";
 
-export type BlockKind = "bathroom" | "meal" | "social" | "argument" | "salary";
-export type AwayReason = BlockKind | "asleep";
+/** "bathroom", "meal", "social", "argument", "salary", or the id of a life event. */
+export type BlockKind = string;
+export type AwayReason = string;
 
 export interface Block {
   kind: BlockKind;
   start: number;
   end: number;
+  /** False for a life event Averey is present for: it colors the day but does not take them away. */
+  away: boolean;
 }
 
 export interface DayPlan {
@@ -130,17 +133,22 @@ export class Schedule {
     const lo = cfg.awakeStartHour;
     const hi = cfg.awakeEndHour;
 
-    const place = (kind: BlockKind, durMin: number): Block | undefined => {
+    const place = (
+      kind: BlockKind,
+      durMin: number,
+      options: { rng?: Rng; hours?: [number, number]; away?: boolean } = {},
+    ): Block | undefined => {
+      const r = options.rng ?? rng;
       const dur = durMin * MIN;
       if (dur <= 0) return undefined;
-      const earliest = dayStart + lo * HOUR;
-      const latest = dayStart + hi * HOUR - dur;
+      const earliest = dayStart + Math.max(lo, options.hours?.[0] ?? lo) * HOUR;
+      const latest = dayStart + Math.min(hi, options.hours?.[1] ?? hi) * HOUR - dur;
       if (latest <= earliest) return undefined;
       for (let attempt = 0; attempt < 40; attempt++) {
-        const start = Math.floor(rng.range(earliest, latest));
+        const start = Math.floor(r.range(earliest, latest));
         const end = start + dur;
         if (!overlaps(start, end)) {
-          const block = { kind, start, end };
+          const block: Block = { kind, start, end, away: options.away ?? true };
           blocks.push(block);
           return block;
         }
@@ -157,7 +165,7 @@ export class Schedule {
           HOUR;
       const start = Math.floor(center - dur / 2);
       const end = Math.floor(start + dur);
-      if (!overlaps(start, end)) blocks.push({ kind: "meal", start, end });
+      if (!overlaps(start, end)) blocks.push({ kind: "meal", start, end, away: true });
     }
 
     const bathroom = cfg.breaks.bathroom;
@@ -184,6 +192,16 @@ export class Schedule {
           outcome: rng.chance(pBoost) ? "boost" : "drag",
         };
       }
+    }
+
+    // Each event rolls on its own rng, so adding one never reshuffles another.
+    const disabled = new Set(cfg.disabledModifiers);
+    for (const event of cfg.events) {
+      if (disabled.has(event.id)) continue;
+      const er = rngFor(this.seed, "event", event.id, dayIndex);
+      if (!er.chance(event.chancePerDay)) continue;
+      const minutes = er.range(event.minutes[0], event.minutes[1]);
+      place(event.id, minutes, { rng: er, hours: event.hourRange, away: event.away });
     }
 
     blocks.sort((a, b) => a.start - b.start);
@@ -238,9 +256,20 @@ export class Schedule {
 
   // ---- availability -----------------------------------------------------
 
+  /** The block happening at `ts`, including life events Averey is present for. */
   blockAt(ts: number): Block | undefined {
     const plan = this.planAt(ts);
     return plan.blocks.find((b) => ts >= b.start && ts < b.end);
+  }
+
+  /** The block at `ts` that takes Averey away from their desk. */
+  private awayBlockAt(ts: number): Block | undefined {
+    return this.planAt(ts).blocks.find((b) => b.away && ts >= b.start && ts < b.end);
+  }
+
+  /** Whether a block of `kind` is happening at `ts`. */
+  isDuring(kind: BlockKind, ts: number): boolean {
+    return this.blockAt(ts)?.kind === kind;
   }
 
   /** Blocks of `kind` that ended within `windowMs` before `ts`. */
@@ -267,7 +296,7 @@ export class Schedule {
         t = asleepUntil;
         continue;
       }
-      const block = this.blockAt(t);
+      const block = this.awayBlockAt(t);
       if (block) {
         firstReason ??= block.kind;
         t = block.end;

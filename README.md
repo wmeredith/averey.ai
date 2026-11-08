@@ -31,7 +31,7 @@ const res = await averey.runWhenAvailable(
 
 ## How a call works
 
-1. **Availability gate.** Bathroom, meal, social media, the daily online argument, and salary research are scheduled blocks. During one, `run` returns `away` with a return time and does not call the model. `runWhenAvailable` waits it out.
+1. **Availability gate.** Bathroom, meal, social media, the daily online argument, salary research, and random life events (a puzzle break) are scheduled blocks. During one, `run` returns `away` with a return time and does not call the model. `runWhenAvailable` waits it out.
 2. **Modifiers.** Independent effects multiply into one `performance` number (see below).
 3. **Comprehension.** Long unfamiliar words are asked about (`clarification`), misread as a similar common word, or skimmed. Pass `glossary` to answer; Averey remembers.
 4. **Memory.** Tasks are stored. `continues: "<taskId>"` recalls an earlier task, which may have drifted (a number changed, a constraint dropped, blended with another task). The trace shows the original and the recalled version.
@@ -65,9 +65,21 @@ const res = await averey.runWhenAvailable(
 | Rushing to leave, ramping from 4:30 to 6 PM (-15%) | local hour | `eod-rush` |
 | Winter gloom (Nov to Feb, -5%) | local month | `seasonal` |
 | Allergy days in March to May, seeded (-10%) | seeded daily roll in the month window | `allergies` |
+| Random office events: puzzle break | `events` in config, scheduled like breaks | the event id (`games`) |
 | Misremembers tasks | lossy memory | n/a |
 | Defensive after being wrong, apologizes a day or two later | `reportError()` | `defensive`, `apology` |
 | Implicit bias | see below | n/a |
+
+### Life events
+
+Random bits of the day (a puzzle break, cake in the kitchen) are plain data in `config.events`. Each one has a `chancePerDay`, a duration, an optional `hourRange` (or a list of them), and either takes Averey `away` or leaves them at their desk in a mood. An `aftermathMinutes`, `multiplier`, and `hint` make it linger. Add your own, or set `events` to replace the defaults. Turn one off by its id in `disabledModifiers`.
+
+```ts
+new Averey({ provider, config: { events: [
+  { id: "standup", chancePerDay: 0.9, minutes: [10, 15], hourRange: [9, 10], away: true,
+    awayLines: ["I'm in standup."] },
+] } });
+```
 
 Every number lives in `src/config.ts` and can be overridden per instance; invalid values throw at construction with every problem listed. Switch any effect off with `disabledModifiers: ["tired"]` (unknown ids throw). Add your own effects per instance:
 

@@ -405,6 +405,28 @@ export const MODIFIERS = Object.freeze({
 
 export type BuiltinModifierId = keyof typeof MODIFIERS;
 
+/** The effect of each life event, while it is happening or just after. */
+function lifeEventModifiers(ctx: ModifierContext, disabled: Set<string>): Modifier[] {
+  const out: Modifier[] = [];
+  for (const event of ctx.config.events) {
+    if (disabled.has(event.id)) continue;
+    if (event.multiplier === undefined && !event.hint) continue;
+    const during = !event.away && ctx.schedule.isDuring(event.id, ctx.now);
+    const after =
+      (event.aftermathMinutes ?? 0) > 0 &&
+      ctx.schedule.recentBlocks(event.id, ctx.now, (event.aftermathMinutes ?? 0) * MIN).length > 0;
+    if (!during && !after) continue;
+    const name = event.label ?? event.id;
+    out.push({
+      id: event.id,
+      label: during ? name : `${name} (aftermath)`,
+      multiplier: event.multiplier ?? 1,
+      hints: event.hint ? [event.hint] : [],
+    });
+  }
+  return out;
+}
+
 export interface ModifierResult {
   performance: number;
   modifiers: Modifier[];
@@ -421,6 +443,7 @@ export function computeModifiers(
     const m = fn(ctx);
     if (m) modifiers.push(m);
   }
+  modifiers.push(...lifeEventModifiers(ctx, disabled));
   const product = modifiers.reduce((p, m) => p * m.multiplier, 1);
   const performance = clamp(
     product,

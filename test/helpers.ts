@@ -40,6 +40,7 @@ export function quietConfig(
   ].filter((id) => !enable.includes(id));
   return {
     utcOffsetMinutes: 0,
+    events: [],
     tired: { chancePerDay: 0 },
     sickness: { episodesPerYear: 0 },
     argument: { minutesPerDay: 0 },

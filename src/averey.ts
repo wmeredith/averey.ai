@@ -166,6 +166,7 @@ export class Averey {
   private readonly store: StateStore;
   private readonly sincerity: SincerityScorer;
   private readonly modifierRegistry: Readonly<Record<string, ModifierFn>>;
+  private readonly eventLines: Record<string, string[]>;
   private state: WorkerState;
   private runCounter = 0;
 
@@ -177,13 +178,23 @@ export class Averey {
     this.store = options.store ?? new InMemoryStore();
     this.sincerity = options.sincerity ?? new HeuristicSincerityScorer();
     this.modifierRegistry = { ...MODIFIERS, ...options.modifiers };
-    const known = [...Object.keys(this.modifierRegistry), ...Object.keys(TASK_EFFECTS)];
+    const reserved = [...Object.keys(this.modifierRegistry), ...Object.keys(TASK_EFFECTS)];
+    const clashing = this.config.events.filter((e) => reserved.includes(e.id));
+    if (clashing.length > 0) {
+      throw new Error(
+        `Life event id clashes with a modifier or effect: ${clashing.map((e) => e.id).join(", ")}`,
+      );
+    }
+    const known = [...reserved, ...this.config.events.map((e) => e.id)];
     const unknown = this.config.disabledModifiers.filter((id) => !known.includes(id));
     if (unknown.length > 0) {
       throw new Error(
         `Unknown modifier id in disabledModifiers: ${unknown.join(", ")}. Known: ${known.join(", ")}`,
       );
     }
+    this.eventLines = Object.fromEntries(
+      this.config.events.filter((e) => e.awayLines?.length).map((e) => [e.id, e.awayLines!]),
+    );
     this.schedule = new Schedule(this.seed, this.config);
     this.state = hydrate(this.store.load());
   }
@@ -388,6 +399,7 @@ export class Averey {
         avail.reason,
         formatTime(avail.backAt, this.config.utcOffsetMinutes),
         rngFor(this.seed, "away", now),
+        this.eventLines,
       ),
       trace: this.baseTrace(now),
     };
