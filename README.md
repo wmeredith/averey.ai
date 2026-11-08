@@ -64,6 +64,7 @@ const res = await averey.runWhenAvailable(
 | Hangry in the hour before a midday meal | derived from the meal block | `hangry` |
 | Rushing to leave, ramping from 4:30 to 6 PM (-15%) | local hour | `eod-rush` |
 | Winter gloom (Nov to Feb, -5%) | local month | `seasonal` |
+| Allergy days in March to May, seeded (-10%) | seeded daily roll in the month window | `allergies` |
 | Misremembers tasks | lossy memory | n/a |
 | Defensive after being wrong, apologizes a day or two later | `reportError()` | `defensive`, `apology` |
 | Implicit bias | see below | n/a |

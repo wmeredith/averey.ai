@@ -66,6 +66,8 @@ export interface AvereyConfig {
   eodRush: { fromHour: number; rampEndHour: number; multiplier: number };
   /** A small winter drag. Months are 1..12 in local time. */
   seasonal: { months: number[]; multiplier: number };
+  /** Seeded allergy days, only in these months (1..12). */
+  allergies: { months: number[]; chancePerDay: number; multiplier: number };
   /** Overusing a word Averey was just taught the meaning of. */
   honeymoon: { hours: number; multiplier: number };
   /** Reusing an earlier answer for a similar request instead of starting over. */
@@ -204,6 +206,7 @@ export const DEFAULT_CONFIG: AvereyConfig = {
   hangry: { fromHour: 11, toHour: 14, windowMinutes: 60, multiplier: 0.93 },
   eodRush: { fromHour: 16.5, rampEndHour: 18, multiplier: 0.85 },
   seasonal: { months: [11, 12, 1, 2], multiplier: 0.95 },
+  allergies: { months: [3, 4, 5], chancePerDay: 0.4, multiplier: 0.9 },
   honeymoon: { hours: 48, multiplier: 1 },
   reuse: { chance: 0.7, minOverlap: 0.5, maxItems: 5 },
   notification: { chancePerRun: 0.12 },
@@ -343,6 +346,8 @@ export function validateConfig(c: AvereyConfig): void {
   ordered("eodRush.fromHour", c.eodRush.fromHour, "eodRush.rampEndHour", c.eodRush.rampEndHour);
   nonNeg("eodRush.fromHour", c.eodRush.fromHour);
   months("seasonal.months", c.seasonal.months);
+  months("allergies.months", c.allergies.months);
+  prob("allergies.chancePerDay", c.allergies.chancePerDay);
   nonNeg("honeymoon.hours", c.honeymoon.hours);
   prob("reuse.chance", c.reuse.chance);
   prob("reuse.minOverlap", c.reuse.minOverlap);

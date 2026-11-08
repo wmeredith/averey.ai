@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DAY, HOUR } from "../src/core/time.js";
+import { DAY, HOUR, dayIndexOf } from "../src/core/time.js";
 import { Averey, InMemoryStore, MockProvider, Schedule, VirtualClock, resolveConfig } from "../src/index.js";
 import { hydrate, initialState, type WorkerState } from "../src/core/state.js";
 import { MONDAY_9AM, makeAverey, quietConfig } from "./helpers.js";
@@ -487,5 +487,50 @@ describe("seasonal gloom", () => {
 
   it("rejects months that are not 1 to 12", () => {
     expect(() => resolveConfig({ seasonal: { months: [0, 13] } })).toThrow(/seasonal\.months/);
+    expect(() => resolveConfig({ allergies: { months: [3.5] } })).toThrow(/allergies\.months/);
+  });
+});
+
+describe("allergy season", () => {
+  const opts = { enable: ["allergies"] };
+
+  it("hits on rolled days in the configured months", () => {
+    const { averey, clock } = makeAverey({ allergies: { chancePerDay: 1 } }, opts);
+    clock.set(Date.UTC(2027, 3, 14, 10)); // April
+    expect(perf(averey)).toBeCloseTo(0.9, 5);
+    expect(averey.status().modifiers.map((m) => m.id)).toContain("allergies");
+  });
+
+  it("never happens outside the months, or at chance 0", () => {
+    const { averey, clock } = makeAverey({ allergies: { chancePerDay: 1 } }, opts);
+    clock.set(Date.UTC(2026, 10, 10, 10)); // November
+    expect(perf(averey)).toBeCloseTo(1, 5);
+    const none = makeAverey({ allergies: { chancePerDay: 0 } }, opts);
+    none.clock.set(Date.UTC(2027, 3, 14, 10));
+    expect(perf(none.averey)).toBeCloseTo(1, 5);
+  });
+
+  it("is a seeded mix of good and bad days that repeats for a seed", () => {
+    const days = (seed: string) => {
+      const s = new Schedule(seed, resolveConfig({ utcOffsetMinutes: 0 }));
+      const start = dayIndexOf(Date.UTC(2027, 3, 1), 0);
+      return Array.from({ length: 30 }, (_, i) => s.plan(start + i).allergies);
+    };
+    const a = days("alice");
+    expect(a).toEqual(days("alice"));
+    expect(a).toContain(true);
+    expect(a).toContain(false);
+    expect(days("bob")).not.toEqual(a);
+  });
+
+  it("did not reshuffle any other part of the day's plan", () => {
+    const base = resolveConfig({ utcOffsetMinutes: 0, allergies: { chancePerDay: 0 } });
+    const full = resolveConfig({ utcOffsetMinutes: 0, allergies: { chancePerDay: 1 } });
+    const day = dayIndexOf(Date.UTC(2027, 3, 14), 0);
+    const a = new Schedule("seed", base).plan(day);
+    const b = new Schedule("seed", full).plan(day);
+    expect(a.allergies).toBe(false);
+    expect(b.allergies).toBe(true);
+    expect({ ...b, allergies: false }).toEqual(a);
   });
 });

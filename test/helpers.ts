@@ -24,6 +24,7 @@ export const TRAIT_MODIFIERS = [
   "hangry",
   "eod-rush",
   "seasonal",
+  "allergies",
 ];
 
 /**

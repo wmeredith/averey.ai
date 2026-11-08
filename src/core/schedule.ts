@@ -7,6 +7,7 @@ import {
   dayStartOf,
   daysInYear,
   localHour,
+  localMonth,
   yearOfDayIndex,
   yearStartDayIndex,
 } from "./time.js";
@@ -24,6 +25,8 @@ export interface DayPlan {
   dayIndex: number;
   dayStart: number;
   tired: boolean;
+  /** An allergy day: only possible in the configured months. */
+  allergies: boolean;
   coffeeDelayMs: number;
   blocks: Block[];
   salary?: { block: Block; outcome: "boost" | "drag" };
@@ -108,6 +111,10 @@ export class Schedule {
     const stress = this.stress(dayIndex);
 
     const tired = rng.chance(cfg.tired.chancePerDay);
+    // Its own rng, so adding allergies did not reshuffle any other day roll.
+    const allergies =
+      cfg.allergies.months.includes(localMonth(dayStart, cfg.utcOffsetMinutes)) &&
+      rngFor(this.seed, "allergies", dayIndex).chance(cfg.allergies.chancePerDay);
     const coffeeDelayMs =
       Math.max(
         1,
@@ -180,7 +187,7 @@ export class Schedule {
     }
 
     blocks.sort((a, b) => a.start - b.start);
-    return { dayIndex, dayStart, tired, coffeeDelayMs, blocks, salary, stress };
+    return { dayIndex, dayStart, tired, allergies, coffeeDelayMs, blocks, salary, stress };
   }
 
   // ---- sickness ---------------------------------------------------------

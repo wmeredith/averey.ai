@@ -234,6 +234,18 @@ const seasonal: ModifierFn = (ctx) => {
   };
 };
 
+const allergies: ModifierFn = (ctx) => {
+  if (!ctx.schedule.planAt(ctx.now).allergies) return null;
+  return {
+    id: "allergies",
+    label: "allergy day",
+    multiplier: ctx.config.allergies.multiplier,
+    hints: [
+      "Your allergies are awful today. You are sniffly, your eyes itch, and you are snippy with anything that wastes your time.",
+    ],
+  };
+};
+
 /** A word Averey was just taught goes everywhere, even where it does not fit. */
 const honeymoon: ModifierFn = (ctx) => {
   const cfg = ctx.config.honeymoon;
@@ -381,6 +393,7 @@ export const MODIFIERS = Object.freeze({
   hangry,
   "eod-rush": eodRush,
   seasonal,
+  allergies,
   honeymoon,
   argument,
   salary,
