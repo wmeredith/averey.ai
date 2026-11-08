@@ -77,6 +77,7 @@ const res = await averey.runWhenAvailable(
 | Says yes to everything, including what it did not follow | task effect, 15% of runs | `agreeable` |
 | Rushed reply to look responsive (under 3 minutes of effort, or 5% of runs) | lowers this run's levers, `trace.slackSpeed` | `slack-speed` |
 | Monday morning after a big weekend game (-12%, seeded) | seeded weekend roll, `sports.chancePerWeekend` | `sports` |
+| The Monday after the clocks change, an hour off (-8%) | US or EU rules, `dst.region`, the clock itself never moves | `dst` |
 | Misremembers tasks | lossy memory | n/a |
 | Defensive after being wrong, apologizes a day or two later | `reportError()` | `defensive`, `apology` |
 | Implicit bias | see below | n/a |

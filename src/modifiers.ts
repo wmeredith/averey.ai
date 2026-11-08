@@ -1,6 +1,6 @@
 import type { AvereyConfig } from "./config.js";
 import type { Block, Schedule } from "./core/schedule.js";
-import { HOUR, MIN, localHour, localMonth, localWeekday } from "./core/time.js";
+import { HOUR, MIN, isDstMonday, localHour, localMonth, localWeekday } from "./core/time.js";
 import { type WorkerState, hoursWorkedIn } from "./core/state.js";
 
 export interface Modifier {
@@ -261,6 +261,21 @@ const sports: ModifierFn = (ctx) => {
   };
 };
 
+/** The clocks changed over the weekend and Averey's body did not get the memo. */
+const dst: ModifierFn = (ctx) => {
+  const cfg = ctx.config.dst;
+  if (!cfg.enabled) return null;
+  if (!isDstMonday(ctx.now, ctx.config.utcOffsetMinutes, cfg.region)) return null;
+  return {
+    id: "dst",
+    label: "an hour off after the clocks changed",
+    multiplier: cfg.multiplier,
+    hints: [
+      "The clocks changed over the weekend and your body is still an hour off. Your meals feel wrong, you keep double checking what time it is, and you are not quite awake.",
+    ],
+  };
+};
+
 /** A word Averey was just taught goes everywhere, even where it does not fit. */
 const honeymoon: ModifierFn = (ctx) => {
   const cfg = ctx.config.honeymoon;
@@ -415,6 +430,7 @@ export const MODIFIERS = Object.freeze({
   seasonal,
   allergies,
   sports,
+  dst,
   honeymoon,
   argument,
   salary,

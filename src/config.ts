@@ -1,3 +1,5 @@
+import type { DstRegion } from "./core/time.js";
+
 export type Range = [number, number];
 
 /** Break kinds the schedule always makes. Life events may not reuse these ids. */
@@ -113,6 +115,8 @@ export interface AvereyConfig {
   allergies: { months: number[]; chancePerDay: number; multiplier: number };
   /** A big game on the weekend leaves Monday morning rough. */
   sports: { chancePerWeekend: number; untilHour: number; multiplier: number };
+  /** The Monday after the clocks change: still an hour off. */
+  dst: { enabled: boolean; region: DstRegion; multiplier: number };
   /** Who is asking changes how Averey works. */
   audience: {
     /** A manager makes Averey hedge and take longer: minutes of effort are multiplied by this. */
@@ -392,6 +396,7 @@ export const DEFAULT_CONFIG: AvereyConfig = {
   seasonal: { months: [11, 12, 1, 2], multiplier: 0.95 },
   allergies: { months: [3, 4, 5], chancePerDay: 0.4, multiplier: 0.9 },
   sports: { chancePerWeekend: 0.25, untilHour: 12, multiplier: 0.88 },
+  dst: { enabled: true, region: "US", multiplier: 0.92 },
   audience: { managerEffortMultiplier: 1.5 },
   agreeable: { chancePerRun: 0.15 },
   slackSpeed: { thresholdMinutes: 3, chancePerRun: 0.05, multiplier: 0.92 },
@@ -542,6 +547,9 @@ export function validateConfig(c: AvereyConfig): void {
   nonNeg("competence.imposterHardWords", c.competence.imposterHardWords);
   prob("sports.chancePerWeekend", c.sports.chancePerWeekend);
   nonNeg("sports.untilHour", c.sports.untilHour);
+  if (c.dst.region !== "US" && c.dst.region !== "EU") {
+    problems.push(`dst.region must be "US" or "EU" (got ${String(c.dst.region)})`);
+  }
   nonNeg("audience.managerEffortMultiplier", c.audience.managerEffortMultiplier);
   prob("agreeable.chancePerRun", c.agreeable.chancePerRun);
   nonNeg("slackSpeed.thresholdMinutes", c.slackSpeed.thresholdMinutes);

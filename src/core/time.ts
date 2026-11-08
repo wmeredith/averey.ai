@@ -31,6 +31,23 @@ export function localMonth(ts: number, offsetMin: number): number {
   return new Date(ts + offsetMin * MIN).getUTCMonth() + 1;
 }
 
+export type DstRegion = "US" | "EU";
+
+/**
+ * True on the Monday right after a daylight saving switch, in local time.
+ * US: second Sunday of March and first Sunday of November. EU: last Sunday
+ * of March and of October. Averey's clock does not change; their body does.
+ */
+export function isDstMonday(ts: number, offsetMin: number, region: DstRegion): boolean {
+  const d = new Date(ts + offsetMin * MIN);
+  if (d.getUTCDay() !== 1) return false;
+  const sunday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - 1));
+  const month = sunday.getUTCMonth() + 1;
+  const day = sunday.getUTCDate();
+  if (region === "US") return (month === 3 && day >= 8 && day <= 14) || (month === 11 && day <= 7);
+  return (month === 3 || month === 10) && day >= 25;
+}
+
 export function yearOfDayIndex(dayIndex: number): number {
   return new Date(dayIndex * DAY).getUTCFullYear();
 }

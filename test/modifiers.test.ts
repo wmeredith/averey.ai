@@ -581,3 +581,49 @@ describe("sports hangover", () => {
     expect(r.status === "ok" && r.trace.systemPrompt).toContain("the big game");
   });
 });
+
+describe("daylight saving Monday", () => {
+  const opts = { enable: ["dst"] };
+
+  it("is an hour off the Monday after the US fall back, then fine", () => {
+    const { averey, clock } = makeAverey({}, opts);
+    clock.set(weekAt(0, 9)); // Mon 2026-11-02, day after the Nov 1 switch
+    expect(perf(averey)).toBeCloseTo(0.92, 5);
+    expect(averey.status().modifiers.map((m) => m.id)).toContain("dst");
+    clock.set(weekAt(1, 9)); // Tuesday
+    expect(perf(averey)).toBeCloseTo(1, 5);
+    clock.set(weekAt(7, 9)); // the next Monday
+    expect(perf(averey)).toBeCloseTo(1, 5);
+  });
+
+  it("hits the US spring forward Monday too", () => {
+    const { averey, clock } = makeAverey({}, opts);
+    clock.set(Date.UTC(2027, 2, 15, 9)); // second Sunday of March 2027 is the 14th
+    expect(perf(averey)).toBeCloseTo(0.92, 5);
+    clock.set(Date.UTC(2027, 2, 8, 9)); // first Monday of March
+    expect(perf(averey)).toBeCloseTo(1, 5);
+  });
+
+  it("follows EU dates when asked", () => {
+    const { averey, clock } = makeAverey({ dst: { region: "EU" } }, opts);
+    clock.set(Date.UTC(2026, 9, 26, 9)); // last Sunday of October is the 25th
+    expect(perf(averey)).toBeCloseTo(0.92, 5);
+    clock.set(weekAt(0, 9)); // US date, not EU
+    expect(perf(averey)).toBeCloseTo(1, 5);
+  });
+
+  it("can be disabled in config, and rejects an unknown region", () => {
+    const off = makeAverey({ dst: { enabled: false } }, opts);
+    off.clock.set(weekAt(0, 9));
+    expect(perf(off.averey)).toBeCloseTo(1, 5);
+    expect(() => resolveConfig({ dst: { region: "MARS" as never } })).toThrow(/dst\.region/);
+  });
+
+  it("never moves Averey's clock", async () => {
+    const { averey, clock } = makeAverey({}, opts);
+    clock.set(weekAt(0, 9));
+    const before = clock.now();
+    await averey.run({ task: "x", effortMinutes: 1 });
+    expect(clock.now() - before).toBe(60_000);
+  });
+});

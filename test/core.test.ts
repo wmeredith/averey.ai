@@ -10,6 +10,7 @@ import {
   DAY,
   HOUR,
   dayIndexOf,
+  isDstMonday,
   localMonth,
   localWeekday,
   yearStartDayIndex,
@@ -176,5 +177,38 @@ describe("schedule", () => {
       }
     }
     expect(seen).toBeGreaterThan(0);
+  });
+});
+
+describe("isDstMonday", () => {
+  const at = (y: number, m: number, d: number) => Date.UTC(y, m - 1, d, 9);
+
+  it("finds the US switches", () => {
+    expect(isDstMonday(at(2026, 11, 2), 0, "US")).toBe(true); // Nov 1 is the first Sunday
+    expect(isDstMonday(at(2026, 3, 9), 0, "US")).toBe(true); // Mar 8 is the second Sunday
+    expect(isDstMonday(at(2027, 3, 15), 0, "US")).toBe(true);
+    expect(isDstMonday(at(2027, 11, 8), 0, "US")).toBe(true); // Nov 7 is the first Sunday
+  });
+
+  it("is false on every other Monday and every other day", () => {
+    expect(isDstMonday(at(2026, 11, 9), 0, "US")).toBe(false);
+    expect(isDstMonday(at(2026, 3, 2), 0, "US")).toBe(false); // after the first Sunday of March
+    expect(isDstMonday(at(2026, 3, 16), 0, "US")).toBe(false);
+    expect(isDstMonday(at(2026, 11, 3), 0, "US")).toBe(false); // Tuesday
+    expect(isDstMonday(at(2026, 11, 1), 0, "US")).toBe(false); // the Sunday itself
+  });
+
+  it("finds the EU switches", () => {
+    expect(isDstMonday(at(2026, 3, 30), 0, "EU")).toBe(true); // Mar 29
+    expect(isDstMonday(at(2026, 10, 26), 0, "EU")).toBe(true); // Oct 25
+    expect(isDstMonday(at(2026, 3, 23), 0, "EU")).toBe(false);
+    expect(isDstMonday(at(2026, 11, 2), 0, "EU")).toBe(false);
+  });
+
+  it("goes by local date", () => {
+    // 02:00 UTC Monday Nov 2 is still Sunday evening at UTC-5.
+    const t = Date.UTC(2026, 10, 2, 2);
+    expect(isDstMonday(t, 0, "US")).toBe(true);
+    expect(isDstMonday(t, -300, "US")).toBe(false);
   });
 });

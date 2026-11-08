@@ -35,6 +35,7 @@ export const TRAIT_MODIFIERS = [
   "agreeable",
   "slack-speed",
   "sports",
+  "dst",
 ];
 
 /**
