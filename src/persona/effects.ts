@@ -28,6 +28,8 @@ export interface TaskEffectOutcome {
   hints?: string[];
   /** Extra paragraphs for the message to the model, after the task. */
   notes?: string[];
+  /** Multiplies the minutes of effort this run counts for. */
+  effortMultiplier?: number;
   trace?: Partial<Trace>;
 }
 
@@ -159,6 +161,18 @@ const sunkCost: TaskEffect = (ctx) => {
   };
 };
 
+/** A manager is reading: be careful, hedge, take longer. */
+const manager: TaskEffect = (ctx) => {
+  if (ctx.input.audience !== "manager") return null;
+  return {
+    hints: [
+      "The person asking is your manager. You want to look careful and thorough, so you hedge, qualify your answers, write more than you need to, and take your time.",
+    ],
+    effortMultiplier: ctx.config.audience.managerEffortMultiplier,
+    trace: { audience: "manager" },
+  };
+};
+
 export const TASK_EFFECTS = Object.freeze({
   notification,
   reuse,
@@ -166,6 +180,7 @@ export const TASK_EFFECTS = Object.freeze({
   imposter,
   "status-inflation": statusInflation,
   "sunk-cost": sunkCost,
+  manager,
 } satisfies Record<string, TaskEffect>);
 
 export interface ApplyTaskEffects {
@@ -184,6 +199,8 @@ export interface AppliedEffects {
   text: string;
   hints: string[];
   notes: string[];
+  /** The product of every effort multiplier. 1 when none apply. */
+  effortMultiplier: number;
   trace: Partial<Trace>;
 }
 
@@ -195,6 +212,7 @@ export function applyTaskEffects(
   let text = ctx.text;
   const hints: string[] = [];
   const notes: string[] = [];
+  let effortMultiplier = 1;
   const trace: Partial<Trace> = {};
   for (const [id, effect] of Object.entries(registry)) {
     if (disabled.has(id)) continue;
@@ -211,7 +229,8 @@ export function applyTaskEffects(
     if (outcome.text !== undefined) text = outcome.text;
     if (outcome.hints) hints.push(...outcome.hints);
     if (outcome.notes) notes.push(...outcome.notes);
+    if (outcome.effortMultiplier !== undefined) effortMultiplier *= outcome.effortMultiplier;
     Object.assign(trace, outcome.trace);
   }
-  return { text, hints, notes, trace };
+  return { text, hints, notes, effortMultiplier, trace };
 }

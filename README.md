@@ -71,6 +71,7 @@ const res = await averey.runWhenAvailable(
 | Asked for a status: overstates progress | task effect, `trace.inflated` | `status-inflation` |
 | Sincere compliment: polishes the surface, neglects the ask | extends the compliment hint, `compliment.goldPlating` | `compliment` |
 | Continuing a job: sticks with the approach, even after being corrected | task effect, `trace.sunkCost` | `sunk-cost` |
+| A manager is asking: hedges and takes 50% longer | `audience: "manager"` or sender label `role=manager` | `manager` |
 | Misremembers tasks | lossy memory | n/a |
 | Defensive after being wrong, apologizes a day or two later | `reportError()` | `defensive`, `apology` |
 | Implicit bias | see below | n/a |

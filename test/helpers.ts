@@ -29,6 +29,7 @@ export const TRAIT_MODIFIERS = [
   "imposter",
   "status-inflation",
   "sunk-cost",
+  "manager",
 ];
 
 /**

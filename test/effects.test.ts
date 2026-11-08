@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Averey, InMemoryStore, MockProvider, Rng, VirtualClock } from "../src/index.js";
+import { Averey, AvereyTeam, InMemoryStore, MockProvider, Rng, VirtualClock } from "../src/index.js";
 import { initialState, type WorkerState } from "../src/core/state.js";
 import { dropConstraintDetailed } from "../src/persona/distort.js";
 import { similarity } from "../src/persona/effects.js";
@@ -366,5 +366,73 @@ describe("gold-plating", () => {
     await averey.run({ task: "Write a note." });
     expect(systemOf(provider)).toContain("genuinely appreciated");
     expect(systemOf(provider)).not.toContain("less careful");
+  });
+});
+
+/** An Averey on a team, sharing a provider so the prompts can be read back. */
+function teamOf(
+  members: string[],
+  config: Parameters<typeof makeAverey>[0] = {},
+  enable: string[] = [],
+) {
+  const provider = new MockProvider();
+  const clock = new VirtualClock(MONDAY_9AM);
+  const team = new AvereyTeam();
+  const workers: Record<string, Averey> = {};
+  for (const name of members) {
+    workers[name] = new Averey({
+      provider,
+      clock,
+      seed: name,
+      config: quietConfig(config, enable),
+    });
+    team.add(name, workers[name]!, name === "boss" ? { role: "manager" } : {});
+  }
+  return { team, provider, workers, clock };
+}
+
+describe("manager audience", () => {
+  const on = { enable: ["manager"] };
+
+  it("hedges and takes 50% longer when a manager is asking", async () => {
+    const { averey, provider } = makeAverey({}, on);
+    const r = await averey.run({ task: "Write a note.", audience: "manager" });
+    expect(r.trace.audience).toBe("manager");
+    expect(systemOf(provider)).toContain("your manager");
+    expect(r.trace.durationMinutes).toBeCloseTo(15, 5); // 10 default x 1.5
+  });
+
+  it("leaves a peer or an unlabeled asker alone", async () => {
+    const { averey, provider } = makeAverey({}, on);
+    for (const audience of ["peer", undefined] as const) {
+      const r = await averey.run({ task: "Write a note.", audience });
+      expect(r.trace.audience).toBeUndefined();
+      expect(r.trace.durationMinutes).toBeCloseTo(10, 5);
+    }
+    expect(systemOf(provider)).not.toContain("your manager");
+  });
+
+  it("is picked up from a sender labeled role=manager on a team", async () => {
+    const { team, provider } = teamOf(["boss", "ann"], {}, ["manager"]);
+    await team.send("boss", "ann", "Where are we on the report?");
+    expect(provider.requests.at(-1)!.system).toContain("your manager");
+  });
+
+  it("does not treat other senders as managers", async () => {
+    const { team, provider } = teamOf(["bo", "ann"], {}, ["manager"]);
+    await team.send("bo", "ann", "Where are we on the report?");
+    expect(provider.requests.at(-1)!.system).not.toContain("your manager");
+  });
+
+  it("lets the caller override the label", async () => {
+    const { team, provider } = teamOf(["boss", "ann"], {}, ["manager"]);
+    await team.send("boss", "ann", "Hi.", { audience: "peer" });
+    expect(provider.requests.at(-1)!.system).not.toContain("your manager");
+  });
+
+  it("uses the configured multiplier", async () => {
+    const { averey } = makeAverey({ audience: { managerEffortMultiplier: 3 } }, on);
+    const r = await averey.run({ task: "Write a note.", audience: "manager", effortMinutes: 4 });
+    expect(r.trace.durationMinutes).toBeCloseTo(12, 5);
   });
 });

@@ -57,6 +57,10 @@ export function decideBias(
   };
 }
 
+function stripUndefined<T extends object>(o: T): Partial<T> {
+  return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as Partial<T>;
+}
+
 interface Member {
   name: string;
   labels: Labels;
@@ -108,6 +112,10 @@ export class AvereyTeam {
     const worker = receiver.averey;
     const now = worker.clock.now();
     const extraHints = [...(options.extraHints ?? [])];
+    // What the team knows about this message, for the traits that need an audience.
+    const context: Pick<RunInput, "audience"> = {
+      audience: options.audience ?? (sender.labels.role === "manager" ? "manager" : undefined),
+    };
 
     if (worker.availability(now).available) {
       // Contact goes both ways: whoever is sick wears down the other.
@@ -129,7 +137,7 @@ export class AvereyTeam {
       }
     }
 
-    return worker.run({ ...options, task: text, extraHints });
+    return worker.run({ ...options, ...stripUndefined(context), task: text, extraHints });
   }
 
   /** Second-guess rates by label, to check how the bias model behaved. */

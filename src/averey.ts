@@ -66,6 +66,8 @@ export interface RunInput {
   glossary?: Record<string, string>;
   /** Extra condition hints, used by AvereyTeam. */
   extraHints?: string[];
+  /** Who is asking. A manager makes Averey hedge and take longer. */
+  audience?: "manager" | "peer";
   /** Cancels the model call. */
   signal?: AbortSignal;
 }
@@ -100,6 +102,8 @@ export interface Trace {
   inflated?: boolean;
   /** Averey is sticking with an approach they already chose. */
   sunkCost?: boolean;
+  /** Who was asking, when it changed how Averey worked. */
+  audience?: "manager";
   typos?: number;
   /** True when the reply was cut off by the token limit. */
   truncated?: boolean;
@@ -351,7 +355,7 @@ export class Averey {
 
       this.bookWork(
         now,
-        input.effortMinutes ?? this.config.defaultEffortMinutes,
+        (input.effortMinutes ?? this.config.defaultEffortMinutes) * effects.effortMultiplier,
         modifiers,
         trace,
       );

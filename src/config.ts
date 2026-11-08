@@ -111,6 +111,11 @@ export interface AvereyConfig {
   seasonal: { months: number[]; multiplier: number };
   /** Seeded allergy days, only in these months (1..12). */
   allergies: { months: number[]; chancePerDay: number; multiplier: number };
+  /** Who is asking changes how Averey works. */
+  audience: {
+    /** A manager makes Averey hedge and take longer: minutes of effort are multiplied by this. */
+    managerEffortMultiplier: number;
+  };
   /** Overusing a word Averey was just taught the meaning of. */
   honeymoon: { hours: number; multiplier: number };
   /** Reusing an earlier answer for a similar request instead of starting over. */
@@ -374,6 +379,7 @@ export const DEFAULT_CONFIG: AvereyConfig = {
   eodRush: { fromHour: 16.5, rampEndHour: 18, multiplier: 0.85 },
   seasonal: { months: [11, 12, 1, 2], multiplier: 0.95 },
   allergies: { months: [3, 4, 5], chancePerDay: 0.4, multiplier: 0.9 },
+  audience: { managerEffortMultiplier: 1.5 },
   honeymoon: { hours: 48, multiplier: 1 },
   reuse: { chance: 0.7, minOverlap: 0.5, maxItems: 5 },
   notification: { chancePerRun: 0.12 },
@@ -519,6 +525,7 @@ export function validateConfig(c: AvereyConfig): void {
   prob("allergies.chancePerDay", c.allergies.chancePerDay);
   nonNeg("competence.easyMaxWords", c.competence.easyMaxWords);
   nonNeg("competence.imposterHardWords", c.competence.imposterHardWords);
+  nonNeg("audience.managerEffortMultiplier", c.audience.managerEffortMultiplier);
   nonNeg("honeymoon.hours", c.honeymoon.hours);
   prob("reuse.chance", c.reuse.chance);
   prob("reuse.minOverlap", c.reuse.minOverlap);
