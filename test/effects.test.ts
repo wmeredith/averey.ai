@@ -512,3 +512,30 @@ describe("echoing the last speaker", () => {
     expect(r.trace.echoed).toBeUndefined();
   });
 });
+
+describe("agreeableness trap", () => {
+  const on = { enable: ["agreeable"] };
+
+  it("sometimes says yes to everything and pretends it is handled", async () => {
+    const { averey, provider } = makeAverey({ agreeable: { chancePerRun: 1 } }, on);
+    const r = await averey.run({ task: "Do all five of these." });
+    expect(r.trace.agreed).toBe(true);
+    expect(systemOf(provider)).toContain("said yes to everything");
+  });
+
+  it("never happens at chance 0 and is repeatable at a middle chance", async () => {
+    const never = makeAverey({ agreeable: { chancePerRun: 0 } }, on);
+    expect((await never.averey.run({ task: "x" })).trace.agreed).toBeUndefined();
+
+    const rolls = async () => {
+      const { averey } = makeAverey({ agreeable: { chancePerRun: 0.5 } }, { ...on, seed: "same" });
+      const out: boolean[] = [];
+      for (let i = 0; i < 12; i++) out.push((await averey.run({ task: "x" })).trace.agreed ?? false);
+      return out;
+    };
+    const a = await rolls();
+    expect(a).toEqual(await rolls());
+    expect(a).toContain(true);
+    expect(a).toContain(false);
+  });
+});

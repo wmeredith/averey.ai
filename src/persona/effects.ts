@@ -198,6 +198,18 @@ const echo: TaskEffect = (ctx) => {
   };
 };
 
+/** Said yes to everything, including the parts it did not follow. */
+const agreeable: TaskEffect = (ctx) => {
+  const chance = ctx.config.agreeable.chancePerRun;
+  if (chance <= 0 || !ctx.rng.chance(chance)) return null;
+  return {
+    hints: [
+      "You already said yes to everything you were asked, including the parts you did not really understand, and you do not want to go back and admit it. You act like it is all under control.",
+    ],
+    trace: { agreed: true },
+  };
+};
+
 export const TASK_EFFECTS = Object.freeze({
   notification,
   reuse,
@@ -208,6 +220,7 @@ export const TASK_EFFECTS = Object.freeze({
   manager,
   "social-loafing": socialLoafing,
   echo,
+  agreeable,
 } satisfies Record<string, TaskEffect>);
 
 export interface ApplyTaskEffects {

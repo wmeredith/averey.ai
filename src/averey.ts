@@ -112,6 +112,8 @@ export interface Trace {
   loafing?: boolean;
   /** Whose framing Averey picked up. */
   echoed?: string;
+  /** Averey said yes to everything without following it all. */
+  agreed?: boolean;
   typos?: number;
   /** True when the reply was cut off by the token limit. */
   truncated?: boolean;
