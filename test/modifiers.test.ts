@@ -423,3 +423,35 @@ describe("hangry", () => {
     expect(perf(averey)).toBeCloseTo(1, 5);
   });
 });
+
+describe("rushing at the end of the day", () => {
+  const opts = { enable: ["eod-rush"] };
+
+  it("ramps down from 4:30 to 6 PM and stays there", () => {
+    const { averey, clock } = makeAverey({}, opts);
+    clock.set(weekAt(1, 16, 29));
+    expect(perf(averey)).toBeCloseTo(1, 5);
+    clock.set(weekAt(1, 16, 30));
+    expect(perf(averey)).toBeCloseTo(1, 5);
+    clock.set(weekAt(1, 17, 15));
+    expect(perf(averey)).toBeCloseTo(0.925, 5);
+    clock.set(weekAt(1, 18, 0));
+    expect(perf(averey)).toBeCloseTo(0.85, 5);
+    clock.set(weekAt(1, 20, 0));
+    expect(perf(averey)).toBeCloseTo(0.85, 5);
+  });
+
+  it("is a different thing from the Friday cliff and can be switched off alone", () => {
+    const { averey, clock } = makeAverey({}, { enable: ["eod-rush", "friday"] });
+    clock.set(weekAt(4, 18, 0));
+    expect(averey.status().modifiers.map((m) => m.id).sort()).toEqual(["eod-rush", "friday"]);
+    expect(perf(averey)).toBeCloseTo(0.85 * 0.82, 5);
+  });
+
+  it("puts the hurry in the prompt", async () => {
+    const { averey, clock } = makeAverey({}, opts);
+    clock.set(weekAt(1, 17, 45));
+    const r = await averey.run({ task: "do a thing" });
+    expect(r.status === "ok" && r.trace.systemPrompt).toContain("watching the clock");
+  });
+});

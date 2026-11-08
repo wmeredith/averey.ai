@@ -62,6 +62,8 @@ export interface AvereyConfig {
   };
   /** Irritable in the stretch before a midday meal. */
   hangry: { fromHour: number; toHour: number; windowMinutes: number; multiplier: number };
+  /** Rushing to leave on time: performance ramps down toward the end of the day. */
+  eodRush: { fromHour: number; rampEndHour: number; multiplier: number };
   /** Overusing a word Averey was just taught the meaning of. */
   honeymoon: { hours: number; multiplier: number };
   /** Reusing an earlier answer for a similar request instead of starting over. */
@@ -198,6 +200,7 @@ export const DEFAULT_CONFIG: AvereyConfig = {
     contagionHours: 24,
   },
   hangry: { fromHour: 11, toHour: 14, windowMinutes: 60, multiplier: 0.93 },
+  eodRush: { fromHour: 16.5, rampEndHour: 18, multiplier: 0.85 },
   honeymoon: { hours: 48, multiplier: 1 },
   reuse: { chance: 0.7, minOverlap: 0.5, maxItems: 5 },
   notification: { chancePerRun: 0.12 },
@@ -327,6 +330,8 @@ export function validateConfig(c: AvereyConfig): void {
   nonNeg("coffee.crashMinutes", c.coffee.crashMinutes);
   ordered("hangry.fromHour", c.hangry.fromHour, "hangry.toHour", c.hangry.toHour);
   nonNeg("hangry.windowMinutes", c.hangry.windowMinutes);
+  ordered("eodRush.fromHour", c.eodRush.fromHour, "eodRush.rampEndHour", c.eodRush.rampEndHour);
+  nonNeg("eodRush.fromHour", c.eodRush.fromHour);
   nonNeg("honeymoon.hours", c.honeymoon.hours);
   prob("reuse.chance", c.reuse.chance);
   prob("reuse.minOverlap", c.reuse.minOverlap);

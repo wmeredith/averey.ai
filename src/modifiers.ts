@@ -202,6 +202,24 @@ const hangry: ModifierFn = (ctx) => {
   };
 };
 
+/** Plans at 6: the closer to leaving time, the less care goes into the work. */
+const eodRush: ModifierFn = (ctx) => {
+  const cfg = ctx.config.eodRush;
+  const h = localHour(ctx.now, ctx.config.utcOffsetMinutes);
+  if (h < cfg.fromHour) return null;
+  const span = cfg.rampEndHour - cfg.fromHour;
+  const ramp = span > 0 ? clamp((h - cfg.fromHour) / span, 0, 1) : 1;
+  if (ramp <= 0) return null;
+  return {
+    id: "eod-rush",
+    label: `rushing to leave (${Math.round(ramp * 100)}%)`,
+    multiplier: 1 - (1 - cfg.multiplier) * ramp,
+    hints: [
+      "You have plans right after work and you are watching the clock. You rush, skim the request, and settle for good enough so you can leave on time.",
+    ],
+  };
+};
+
 /** A word Averey was just taught goes everywhere, even where it does not fit. */
 const honeymoon: ModifierFn = (ctx) => {
   const cfg = ctx.config.honeymoon;
@@ -347,6 +365,7 @@ export const MODIFIERS = Object.freeze({
   friday,
   monday,
   hangry,
+  "eod-rush": eodRush,
   honeymoon,
   argument,
   salary,
