@@ -1,13 +1,7 @@
 import type { AvereyConfig } from "./config.js";
 import type { Rng } from "./core/rng.js";
 import type { MemoryItem } from "./core/state.js";
-
-const CONSTRAINT_WORDS =
-  /\b(must|only|never|always|don't|do not|should|exactly|at least|at most|without|except|before|after|by)\b/i;
-
-function splitSentences(text: string): string[] {
-  return text.match(/[^.!?\n]+[.!?]*\s*/g) ?? [text];
-}
+import { dropConstraint, splitSentences } from "./persona/distort.js";
 
 function distortNumber(text: string, rng: Rng): string | undefined {
   const matches = [...text.matchAll(/\d+/g)];
@@ -19,19 +13,6 @@ function distortNumber(text: string, rng: Rng): string | undefined {
   const next = String(Math.max(0, changed === n ? n + 1 : changed));
   const idx = m.index ?? 0;
   return text.slice(0, idx) + next + text.slice(idx + m[0].length);
-}
-
-function dropConstraint(text: string, rng: Rng): string | undefined {
-  const sentences = splitSentences(text);
-  if (sentences.length < 2) return undefined;
-  const constraints = sentences
-    .map((s, i) => [s, i] as const)
-    .filter(([s]) => CONSTRAINT_WORDS.test(s));
-  const [, idx] =
-    constraints.length > 0
-      ? rng.pick(constraints)
-      : ([null, rng.int(0, sentences.length - 1)] as const);
-  return sentences.filter((_, i) => i !== idx).join("").trim();
 }
 
 function mergeWithOther(

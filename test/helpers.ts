@@ -17,6 +17,7 @@ export const TRAIT_MODIFIERS = [
   "lunch-dip",
   "friday",
   "monday",
+  "notification",
 ];
 
 /**

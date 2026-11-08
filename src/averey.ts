@@ -29,6 +29,7 @@ import {
   computeModifiers,
 } from "./modifiers.js";
 import { type ComprehensionResult, interpret } from "./persona/comprehension.js";
+import { type AppliedEffects, TASK_EFFECTS, applyTaskEffects } from "./persona/effects.js";
 import { awayMessage, buildSystemPrompt, injectTypos } from "./persona/prompt.js";
 import type { LLMMessage, LLMProvider, LLMRequest } from "./providers/types.js";
 import {
@@ -86,6 +87,8 @@ export interface Trace {
     skimmed: string[];
   };
   memory?: RecallResult;
+  /** Set when a phone buzz interrupted the request. */
+  notification?: { dropped: boolean; removed?: string };
   typos?: number;
   /** True when the reply was cut off by the token limit. */
   truncated?: boolean;
@@ -171,7 +174,7 @@ export class Averey {
     this.store = options.store ?? new InMemoryStore();
     this.sincerity = options.sincerity ?? new HeuristicSincerityScorer();
     this.modifierRegistry = { ...MODIFIERS, ...options.modifiers };
-    const known = Object.keys(this.modifierRegistry);
+    const known = [...Object.keys(this.modifierRegistry), ...Object.keys(TASK_EFFECTS)];
     const unknown = this.config.disabledModifiers.filter((id) => !known.includes(id));
     if (unknown.length > 0) {
       throw new Error(
@@ -296,12 +299,23 @@ export class Averey {
       const levers = computeLevers(performance, this.config, this.provider.capabilities);
       trace.levers = levers;
 
+      const effects = applyTaskEffects({
+        text: understood.text,
+        config: this.config,
+        performance,
+        now,
+        seed: this.seed,
+        runIndex: this.runCounter,
+      });
+      Object.assign(trace, effects.trace);
+
       const request = this.buildRequest(
         input,
-        understood,
+        { ...understood, text: effects.text },
         recalled,
         modifiers,
         levers,
+        effects,
       );
       trace.systemPrompt = request.system;
       const response = await this.provider.complete(request);
@@ -423,10 +437,12 @@ export class Averey {
     recalled: RecallResult | undefined,
     modifiers: Modifier[],
     levers: Levers,
+    effects: AppliedEffects,
   ): LLMRequest {
     const hints = [
       ...modifiers.flatMap((m) => m.hints),
       ...levers.compensationHints,
+      ...effects.hints,
       ...(input.extraHints ?? []),
     ];
     if (understood.skimmed.length > 0) {

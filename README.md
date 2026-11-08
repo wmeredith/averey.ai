@@ -35,8 +35,9 @@ const res = await averey.runWhenAvailable(
 2. **Modifiers.** Independent effects multiply into one `performance` number (see below).
 3. **Comprehension.** Long unfamiliar words are asked about (`clarification`), misread as a similar common word, or skimmed. Pass `glossary` to answer; Averey remembers.
 4. **Memory.** Tasks are stored. `continues: "<taskId>"` recalls an earlier task, which may have drifted (a number changed, a constraint dropped, blended with another task). The trace shows the original and the recalled version.
-5. **Levers.** Lower performance means higher temperature, a smaller `max_tokens`, less of your `context` actually read, and more typos (never inside code fences). Providers that reject `temperature` are compensated for in the prompt.
-6. **Persona prompt.** The system prompt describes Averey's condition right now, built from the active modifiers.
+5. **Task effects.** What Averey thinks the task is can change: a phone buzz mid-request drops a rule. Each effect is recorded on the `trace`.
+6. **Levers.** Lower performance means higher temperature, a smaller `max_tokens`, less of your `context` actually read, and more typos (never inside code fences). Providers that reject `temperature` are compensated for in the prompt.
+7. **Persona prompt.** The system prompt describes Averey's condition right now, built from the active modifiers.
 
 ## What is modeled
 
@@ -56,6 +57,7 @@ const res = await averey.runWhenAvailable(
 | Post-lunch crash (-12% for 90 min after a midday meal) | derived from the meal block | `lunch-dip` |
 | Friday after 3 PM, checked out (-18%) | local weekday and hour | `friday` |
 | Monday before 11 AM, rusty (-10%) | local weekday and hour | `monday` |
+| A phone buzz mid-request drops one rule from the task | task effect, 12% of runs, `trace.notification` | `notification` |
 | Misremembers tasks | lossy memory | n/a |
 | Defensive after being wrong, apologizes a day or two later | `reportError()` | `defensive`, `apology` |
 | Implicit bias | see below | n/a |
