@@ -75,6 +75,7 @@ const res = await averey.runWhenAvailable(
 | A shared job: assumes someone else has the hard part | `shared: true` or a team of 3 or more | `social-loafing` |
 | Picks up the framing of the previous speaker, mistakes included | `lastHeard`, filled in by `AvereyTeam.send` | `echo` |
 | Says yes to everything, including what it did not follow | task effect, 15% of runs | `agreeable` |
+| Rushed reply to look responsive (under 3 minutes of effort, or 5% of runs) | lowers this run's levers, `trace.slackSpeed` | `slack-speed` |
 | Misremembers tasks | lossy memory | n/a |
 | Defensive after being wrong, apologizes a day or two later | `reportError()` | `defensive`, `apology` |
 | Implicit bias | see below | n/a |

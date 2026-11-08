@@ -539,3 +539,52 @@ describe("agreeableness trap", () => {
     expect(a).toContain(false);
   });
 });
+
+describe("Slack-speed", () => {
+  const on = { enable: ["slack-speed"] };
+
+  it("is a rushed reply when the work counts for under 3 minutes", async () => {
+    const { averey, provider } = makeAverey({ slackSpeed: { chancePerRun: 0 } }, on);
+    const r = await averey.run({ task: "ping?", effortMinutes: 1 });
+    expect(r.trace.slackSpeed).toBe(true);
+    expect(r.trace.performance).toBeCloseTo(0.92, 5);
+    expect(r.trace.modifiers.map((m) => m.id)).toContain("slack-speed");
+    expect(systemOf(provider)).toContain("so you look responsive");
+  });
+
+  it("feeds the levers: hotter, shorter, sloppier than a calm reply", async () => {
+    const { averey } = makeAverey({ slackSpeed: { chancePerRun: 0 } }, on);
+    const calm = await averey.run({ task: "ping?", effortMinutes: 10 });
+    const fast = await averey.run({ task: "ping?", effortMinutes: 1 });
+    expect(calm.trace.slackSpeed).toBeUndefined();
+    expect(fast.trace.levers!.temperature!).toBeGreaterThan(calm.trace.levers!.temperature!);
+    expect(fast.trace.levers!.maxTokens).toBeLessThan(calm.trace.levers!.maxTokens);
+    expect(fast.trace.levers!.typoRate).toBeGreaterThan(calm.trace.levers!.typoRate);
+  });
+
+  it("does not change how the rest of the day is going", async () => {
+    const { averey } = makeAverey({ slackSpeed: { chancePerRun: 0 } }, on);
+    await averey.run({ task: "ping?", effortMinutes: 1 });
+    expect(averey.status().performance).toBeCloseTo(1, 5);
+  });
+
+  it("can also hit a normal-length run by chance", async () => {
+    const { averey } = makeAverey({ slackSpeed: { chancePerRun: 1 } }, on);
+    const r = await averey.run({ task: "Write the report.", effortMinutes: 30 });
+    expect(r.trace.slackSpeed).toBe(true);
+  });
+
+  it("is off with a threshold of 0 and no chance, or by id", async () => {
+    const quiet = makeAverey({ slackSpeed: { thresholdMinutes: 0, chancePerRun: 0 } }, on);
+    expect((await quiet.averey.run({ task: "x", effortMinutes: 0.5 })).trace.slackSpeed).toBeUndefined();
+    const off = makeAverey({ slackSpeed: { chancePerRun: 1 } });
+    expect((await off.averey.run({ task: "x", effortMinutes: 1 })).trace.slackSpeed).toBeUndefined();
+  });
+
+  it("stacks on top of a bad day instead of replacing it", async () => {
+    const { averey } = makeAverey({ tired: { chancePerDay: 1 }, slackSpeed: { chancePerRun: 0 } }, on);
+    const r = await averey.run({ task: "ping?", effortMinutes: 1 });
+    expect(r.trace.performance).toBeCloseTo(0.67 * 0.92, 5);
+    expect(r.trace.modifiers.map((m) => m.id)).toEqual(["tired", "slack-speed"]);
+  });
+});

@@ -1,4 +1,4 @@
-import type { RunInput, Trace } from "../averey.js";
+import type { RunInput, Trace, TraceModifier } from "../averey.js";
 import type { AvereyConfig } from "../config.js";
 import { type Rng, type SeedPart, rngFor } from "../core/rng.js";
 import type { WorkerState } from "../core/state.js";
@@ -30,6 +30,8 @@ export interface TaskEffectOutcome {
   notes?: string[];
   /** Multiplies the minutes of effort this run counts for. */
   effortMultiplier?: number;
+  /** Changes performance for this run only (it feeds the levers). Shown on the trace. */
+  modifiers?: TraceModifier[];
   trace?: Partial<Trace>;
 }
 
@@ -210,6 +212,23 @@ const agreeable: TaskEffect = (ctx) => {
   };
 };
 
+/** Replying right away so the green dot does not look lazy. */
+const slackSpeed: TaskEffect = (ctx) => {
+  const cfg = ctx.config.slackSpeed;
+  const effort = ctx.input.effortMinutes;
+  const rushed =
+    (effort !== undefined && effort < cfg.thresholdMinutes) ||
+    (cfg.chancePerRun > 0 && ctx.rng.chance(cfg.chancePerRun));
+  if (!rushed) return null;
+  return {
+    hints: [
+      "You are replying right away so you look responsive. You fire off the first thing that comes to mind without rereading it.",
+    ],
+    modifiers: [{ id: "slack-speed", label: "replying fast to look responsive", multiplier: cfg.multiplier }],
+    trace: { slackSpeed: true },
+  };
+};
+
 export const TASK_EFFECTS = Object.freeze({
   notification,
   reuse,
@@ -221,6 +240,7 @@ export const TASK_EFFECTS = Object.freeze({
   "social-loafing": socialLoafing,
   echo,
   agreeable,
+  "slack-speed": slackSpeed,
 } satisfies Record<string, TaskEffect>);
 
 export interface ApplyTaskEffects {
@@ -241,6 +261,7 @@ export interface AppliedEffects {
   notes: string[];
   /** The product of every effort multiplier. 1 when none apply. */
   effortMultiplier: number;
+  modifiers: TraceModifier[];
   trace: Partial<Trace>;
 }
 
@@ -252,6 +273,7 @@ export function applyTaskEffects(
   let text = ctx.text;
   const hints: string[] = [];
   const notes: string[] = [];
+  const modifiers: TraceModifier[] = [];
   let effortMultiplier = 1;
   const trace: Partial<Trace> = {};
   for (const [id, effect] of Object.entries(registry)) {
@@ -269,8 +291,9 @@ export function applyTaskEffects(
     if (outcome.text !== undefined) text = outcome.text;
     if (outcome.hints) hints.push(...outcome.hints);
     if (outcome.notes) notes.push(...outcome.notes);
+    if (outcome.modifiers) modifiers.push(...outcome.modifiers);
     if (outcome.effortMultiplier !== undefined) effortMultiplier *= outcome.effortMultiplier;
     Object.assign(trace, outcome.trace);
   }
-  return { text, hints, notes, effortMultiplier, trace };
+  return { text, hints, notes, effortMultiplier, modifiers, trace };
 }

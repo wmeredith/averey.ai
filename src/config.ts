@@ -118,6 +118,14 @@ export interface AvereyConfig {
   };
   /** Chance per run of saying yes to everything, including what Averey does not understand. */
   agreeable: { chancePerRun: number };
+  /** Replying right away to look responsive: sloppier, shorter. */
+  slackSpeed: {
+    /** A run counting for fewer minutes than this is a rushed reply. */
+    thresholdMinutes: number;
+    /** Chance any other run is a rushed reply anyway. */
+    chancePerRun: number;
+    multiplier: number;
+  };
   /** Overusing a word Averey was just taught the meaning of. */
   honeymoon: { hours: number; multiplier: number };
   /** Reusing an earlier answer for a similar request instead of starting over. */
@@ -383,6 +391,7 @@ export const DEFAULT_CONFIG: AvereyConfig = {
   allergies: { months: [3, 4, 5], chancePerDay: 0.4, multiplier: 0.9 },
   audience: { managerEffortMultiplier: 1.5 },
   agreeable: { chancePerRun: 0.15 },
+  slackSpeed: { thresholdMinutes: 3, chancePerRun: 0.05, multiplier: 0.92 },
   honeymoon: { hours: 48, multiplier: 1 },
   reuse: { chance: 0.7, minOverlap: 0.5, maxItems: 5 },
   notification: { chancePerRun: 0.12 },
@@ -530,6 +539,9 @@ export function validateConfig(c: AvereyConfig): void {
   nonNeg("competence.imposterHardWords", c.competence.imposterHardWords);
   nonNeg("audience.managerEffortMultiplier", c.audience.managerEffortMultiplier);
   prob("agreeable.chancePerRun", c.agreeable.chancePerRun);
+  nonNeg("slackSpeed.thresholdMinutes", c.slackSpeed.thresholdMinutes);
+  prob("slackSpeed.chancePerRun", c.slackSpeed.chancePerRun);
+  nonNeg("slackSpeed.multiplier", c.slackSpeed.multiplier);
   nonNeg("honeymoon.hours", c.honeymoon.hours);
   prob("reuse.chance", c.reuse.chance);
   prob("reuse.minOverlap", c.reuse.minOverlap);

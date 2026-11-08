@@ -114,6 +114,8 @@ export interface Trace {
   echoed?: string;
   /** Averey said yes to everything without following it all. */
   agreed?: boolean;
+  /** Averey fired back a quick reply to look responsive. */
+  slackSpeed?: boolean;
   typos?: number;
   /** True when the reply was cut off by the token limit. */
   truncated?: boolean;
@@ -333,9 +335,6 @@ export class Averey {
 
       const taskId = input.taskId ?? `task-${now}-${this.runCounter}`;
       const recalled = this.remember(taskId, input, performance, now, rng, trace);
-      const levers = computeLevers(performance, this.config, this.provider.capabilities);
-      trace.levers = levers;
-
       const effects = applyTaskEffects({
         text: understood.text,
         input,
@@ -347,6 +346,20 @@ export class Averey {
         runIndex: this.runCounter,
       });
       Object.assign(trace, effects.trace);
+
+      // Effects can change how well Averey does this one job (not their day).
+      let effective = performance;
+      if (effects.modifiers.length > 0) {
+        const product = effects.modifiers.reduce((p, m) => p * m.multiplier, 1);
+        effective = Math.min(
+          this.config.maxPerformance,
+          Math.max(this.config.minPerformance, performance * product),
+        );
+        trace.modifiers = [...trace.modifiers, ...effects.modifiers];
+        trace.performance = effective;
+      }
+      const levers = computeLevers(effective, this.config, this.provider.capabilities);
+      trace.levers = levers;
 
       const request = this.buildRequest(
         input,

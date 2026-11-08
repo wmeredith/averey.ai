@@ -33,6 +33,7 @@ export const TRAIT_MODIFIERS = [
   "social-loafing",
   "echo",
   "agreeable",
+  "slack-speed",
 ];
 
 /**
