@@ -290,6 +290,18 @@ export const DEFAULT_CONFIG: AvereyConfig = {
         "My mom is calling, give me a bit.",
       ],
     },
+    {
+      id: "hot-desk",
+      label: "hot-desk shuffle",
+      chancePerDay: 0.15,
+      minutes: [10, 20],
+      hourRange: [8, 10],
+      away: true,
+      awayLines: [
+        "Hunting for a desk, give me a few.",
+        "They moved the desks around again, one sec.",
+      ],
+    },
   ],
 
   hours: { capHours: 8, windowHours: 24, decayK: 0.5 },
