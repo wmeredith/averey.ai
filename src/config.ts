@@ -326,6 +326,20 @@ export const DEFAULT_CONFIG: AvereyConfig = {
       multiplier: 0.96,
       hint: "Someone just microwaved fish in the office kitchen and the whole floor reeks. You are in a terrible mood: curt, hostile, and short with everyone.",
     },
+    {
+      id: "hold-music",
+      label: "stuck on hold",
+      chancePerDay: 0.06,
+      minutes: [10, 30],
+      away: true,
+      aftermathMinutes: 30,
+      multiplier: 0.95,
+      hint: "You just spent ages on hold with a call center listening to the same loop of music. You are irritated and a bit numb.",
+      awayLines: [
+        "I'm on hold with the insurance company, ugh.",
+        "Stuck on hold, I'll be back when someone picks up.",
+      ],
+    },
   ],
 
   hours: { capHours: 8, windowHours: 24, decayK: 0.5 },

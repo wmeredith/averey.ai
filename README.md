@@ -65,7 +65,7 @@ const res = await averey.runWhenAvailable(
 | Rushing to leave, ramping from 4:30 to 6 PM (-15%) | local hour | `eod-rush` |
 | Winter gloom (Nov to Feb, -5%) | local month | `seasonal` |
 | Allergy days in March to May, seeded (-10%) | seeded daily roll in the month window | `allergies` |
-| Random office events: puzzle break, snack run, package, SSO lockout, parent call, hot desk, cake, microwaved fish | `events` in config, scheduled like breaks | the event id (`games`, `snack`, `package`, `sso`, `parent-call`, `hot-desk`, `cake`, `fish`) |
+| Random office events: puzzle break, snack run, package, SSO lockout, parent call, hot desk, cake, microwaved fish, hold music | `events` in config, scheduled like breaks | the event id (`games`, `snack`, `package`, `sso`, `parent-call`, `hot-desk`, `cake`, `fish`, `hold-music`) |
 | Misremembers tasks | lossy memory | n/a |
 | Defensive after being wrong, apologizes a day or two later | `reportError()` | `defensive`, `apology` |
 | Implicit bias | see below | n/a |
