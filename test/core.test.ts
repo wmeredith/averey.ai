@@ -6,7 +6,41 @@ import {
   resolveConfig,
   rngFor,
 } from "../src/index.js";
-import { DAY, HOUR, dayIndexOf, yearStartDayIndex } from "../src/core/time.js";
+import {
+  DAY,
+  HOUR,
+  dayIndexOf,
+  localMonth,
+  localWeekday,
+  yearStartDayIndex,
+} from "../src/core/time.js";
+
+describe("local calendar helpers", () => {
+  // Monday 2026-11-02 09:00 UTC
+  const monday9 = Date.UTC(2026, 10, 2, 9, 0);
+
+  it("reports the weekday (0 = Sunday)", () => {
+    expect(localWeekday(monday9, 0)).toBe(1);
+    expect(localWeekday(monday9 + 4 * DAY, 0)).toBe(5);
+    expect(localWeekday(monday9 - DAY, 0)).toBe(0);
+  });
+
+  it("shifts the weekday and month with the offset", () => {
+    // 02:00 UTC Monday is still Sunday evening at UTC-5.
+    const early = Date.UTC(2026, 10, 2, 2, 0);
+    expect(localWeekday(early, 0)).toBe(1);
+    expect(localWeekday(early, -300)).toBe(0);
+    // 03:00 UTC on Dec 1 is still November at UTC-5.
+    const edge = Date.UTC(2026, 11, 1, 3, 0);
+    expect(localMonth(edge, 0)).toBe(12);
+    expect(localMonth(edge, -300)).toBe(11);
+  });
+
+  it("reports the month as 1..12", () => {
+    expect(localMonth(Date.UTC(2026, 0, 15), 0)).toBe(1);
+    expect(localMonth(Date.UTC(2026, 11, 15), 0)).toBe(12);
+  });
+});
 
 describe("rng", () => {
   it("is deterministic for a seed", () => {

@@ -21,6 +21,16 @@ export function localHour(ts: number, offsetMin: number): number {
   return (((local % DAY) + DAY) % DAY) / HOUR;
 }
 
+/** Day of the week in local time: 0 = Sunday .. 6 = Saturday. */
+export function localWeekday(ts: number, offsetMin: number): number {
+  return new Date(ts + offsetMin * MIN).getUTCDay();
+}
+
+/** Month in local time: 1 = January .. 12 = December. */
+export function localMonth(ts: number, offsetMin: number): number {
+  return new Date(ts + offsetMin * MIN).getUTCMonth() + 1;
+}
+
 export function yearOfDayIndex(dayIndex: number): number {
   return new Date(dayIndex * DAY).getUTCFullYear();
 }
