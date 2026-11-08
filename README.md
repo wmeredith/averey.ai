@@ -68,6 +68,7 @@ const res = await averey.runWhenAvailable(
 | Random office events: puzzle break, snack run, package, SSO lockout, parent call, hot desk, cake, microwaved fish, hold music | `events` in config, scheduled like breaks | the event id (`games`, `snack`, `package`, `sso`, `parent-call`, `hot-desk`, `cake`, `fish`, `hold-music`) |
 | Short, easy-looking tasks get a confident first answer, no double check | task effect, `trace.overconfident` | `overconfident` |
 | Several hard words left: bluffs with impressive vocabulary | task effect, `trace.imposter` | `imposter` |
+| Asked for a status: overstates progress | task effect, `trace.inflated` | `status-inflation` |
 | Misremembers tasks | lossy memory | n/a |
 | Defensive after being wrong, apologizes a day or two later | `reportError()` | `defensive`, `apology` |
 | Implicit bias | see below | n/a |
