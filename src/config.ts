@@ -265,6 +265,20 @@ export const DEFAULT_CONFIG: AvereyConfig = {
         "Hang on, there's a delivery at the door.",
       ],
     },
+    {
+      id: "sso",
+      label: "locked out of SSO",
+      chancePerDay: 0.1,
+      minutes: [8, 20],
+      away: true,
+      aftermathMinutes: 45,
+      multiplier: 0.93,
+      hint: "You just spent ages fighting a password reset and a two-factor code that never came. You are still fuming at the login screen and it is hard to settle back in.",
+      awayLines: [
+        "I'm locked out of my login, hang on.",
+        "Waiting on a text code to get back in, one sec.",
+      ],
+    },
   ],
 
   hours: { capHours: 8, windowHours: 24, decayK: 0.5 },

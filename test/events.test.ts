@@ -261,7 +261,7 @@ describe("life events: config checks", () => {
 describe("default office events", () => {
   const byId = (id: string) => DEFAULT_CONFIG.events.find((e) => e.id === id)!;
   const forced = (id: string): LifeEventConfig => ({ ...byId(id), chancePerDay: 1 });
-  const ids = ["snack", "package"];
+  const ids = ["snack", "package", "sso"];
 
   it("ships all of them next to the puzzle break", () => {
     expect(DEFAULT_CONFIG.events.map((e) => e.id)).toEqual(["games", ...ids]);
@@ -301,6 +301,17 @@ describe("default office events", () => {
       expect(h < 11 || h >= 14.5).toBe(true);
     }
     expect([...seen].sort()).toEqual(["afternoon", "morning"]);
+  });
+
+  it("sso leaves Averey fuming for 45 minutes", async () => {
+    const { averey, clock } = makeAverey({ events: [forced("sso")] });
+    const block = blockOf(averey, "sso")!;
+    clock.set(block.end + 44 * MIN);
+    expect(averey.status().performance).toBeCloseTo(0.93, 5);
+    const r = await averey.run({ task: "do a thing" });
+    expect(r.status === "ok" && r.trace.systemPrompt).toContain("fuming at the login screen");
+    clock.set(block.end + 46 * MIN);
+    expect(averey.status().performance).toBeCloseTo(1, 5);
   });
 
   it("each away event answers in its own words", async () => {
