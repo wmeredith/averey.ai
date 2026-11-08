@@ -71,9 +71,13 @@ export class LossyMemory {
     private readonly cfg: AvereyConfig["memory"],
   ) {}
 
+  /** Remembers a task. Reusing an id with new text replaces the old version. */
   store(id: string, text: string, now: number): void {
-    const existing = this.items.find((i) => i.id === id);
-    if (existing) return;
+    const index = this.items.findIndex((i) => i.id === id);
+    if (index >= 0) {
+      if (this.items[index]!.original === text) return;
+      this.items.splice(index, 1);
+    }
     this.items.push({
       id,
       original: text,

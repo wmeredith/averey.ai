@@ -76,22 +76,40 @@ export class InMemoryStore implements StateStore {
 
 /** Persists state to a JSON file so "the day" survives restarts. */
 export class FileStateStore implements StateStore {
-  constructor(private readonly path: string) {}
+  private lastWritten: string | undefined;
+
+  constructor(
+    private readonly path: string,
+    private readonly onCorrupt: (path: string, error: unknown) => void = (p, e) =>
+      console.warn(
+        `averey: could not read state from ${p} (${e instanceof Error ? e.message : String(e)}). Starting fresh; the file will be overwritten on the next save.`,
+      ),
+  ) {}
 
   load(): WorkerState | undefined {
     if (!existsSync(this.path)) return undefined;
     try {
-      return JSON.parse(readFileSync(this.path, "utf8")) as WorkerState;
-    } catch {
+      const text = readFileSync(this.path, "utf8");
+      const parsed: unknown = JSON.parse(text);
+      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        throw new Error("not a JSON object");
+      }
+      this.lastWritten = text;
+      return parsed as WorkerState;
+    } catch (error) {
+      this.onCorrupt(this.path, error);
       return undefined;
     }
   }
 
   save(state: WorkerState): void {
+    const text = JSON.stringify(state);
+    if (text === this.lastWritten) return;
     mkdirSync(dirname(this.path), { recursive: true });
     const tmp = `${this.path}.tmp`;
-    writeFileSync(tmp, JSON.stringify(state, null, 2));
+    writeFileSync(tmp, text);
     renameSync(tmp, this.path);
+    this.lastWritten = text;
   }
 }
 

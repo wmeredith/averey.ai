@@ -71,6 +71,20 @@ describe("comprehension", () => {
     const sent = provider.requests[0]!.messages[0]!.content;
     expect(sent).not.toContain("authentication");
   });
+
+  it("never misreads inside code or URLs", async () => {
+    const { averey, provider } = makeAverey({
+      comprehension: { enabled: true, askChance: 0, misreadChance: 1 },
+    });
+    const res = await averey.run({
+      task: "Rename the `authentication` helper, see https://x.dev/authentication, and document authentication.",
+    });
+    expect(res.trace.comprehension?.misread.map((m) => m.word)).toContain("authentication");
+    const sent = provider.requests[0]!.messages[0]!.content;
+    expect(sent).toContain("`authentication`");
+    expect(sent).toContain("https://x.dev/authentication");
+    expect(sent).not.toMatch(/document authentication/);
+  });
 });
 
 describe("levers", () => {
@@ -157,6 +171,24 @@ describe("run: prompt and model call", () => {
     await averey.run({ task: "one", effortMinutes: 90 });
     expect(averey.status().hoursWorked24h).toBeCloseTo(1.5, 5);
   });
+
+  it("queues bursts of calls instead of counting overlapping work", async () => {
+    let t = MONDAY_9AM;
+    const clock = { now: () => t };
+    const averey = new Averey({
+      provider: new MockProvider(),
+      clock,
+      seed: "burst",
+      config: quietConfig(),
+    });
+    for (let i = 0; i < 30; i++) {
+      await averey.run({ task: "Say hi.", effortMinutes: 10 });
+      t += 2_000;
+    }
+    // 30 x 10 minutes of work, queued back to back from 9:00.
+    expect(averey.status(MONDAY_9AM + 5 * 60_000).hoursWorked24h).toBeCloseTo(5 / 60, 5);
+    expect(averey.status(MONDAY_9AM + 300 * 60_000).hoursWorked24h).toBeCloseTo(5, 5);
+  });
 });
 
 describe("typos", () => {
@@ -167,6 +199,15 @@ describe("typos", () => {
     expect(out.count).toBeGreaterThan(0);
     expect(out.text).toContain("```\nrestart --server\n```");
     expect(out.text).not.toBe(text);
+  });
+
+  it("leaves a fence cut off by truncation, and URLs, alone", () => {
+    const code = "```js\nfunction calculateTotals(items) {\n  return items.reduce";
+    const url = "https://example.com/documentation";
+    const out = injectTypos(`Here is the code from ${url}\n${code}`, 1, new Rng(3));
+    expect(out.count).toBeGreaterThan(0);
+    expect(out.text).toContain(url);
+    expect(out.text.endsWith(code)).toBe(true);
   });
 });
 
@@ -256,6 +297,24 @@ describe("memory", () => {
     expect(provider.requests[1]!.messages[0]!.content).toContain(
       "What you remember about the earlier job",
     );
+  });
+
+  it("returns a generated taskId that a later run can continue", async () => {
+    const { averey, provider } = makeAverey();
+    const first = await averey.run({ task: "Order 4 pizzas for Friday." });
+    expect(first.status).toBe("ok");
+    if (first.status !== "ok") return;
+    expect(first.taskId).toMatch(/^task-/);
+
+    const next = await averey.run({ task: "Do that again.", continues: first.taskId });
+    expect(next.trace.memory?.original).toBe("Order 4 pizzas for Friday.");
+    expect(provider.requests[1]!.messages[0]!.content).toContain("Order 4 pizzas");
+  });
+
+  it("echoes a caller-supplied taskId", async () => {
+    const { averey } = makeAverey();
+    const res = await averey.run({ taskId: "mine", task: "hi" });
+    expect(res.status === "ok" && res.taskId).toBe("mine");
   });
 
   it("distorts more when tired", () => {

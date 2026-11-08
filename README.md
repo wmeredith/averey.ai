@@ -19,6 +19,16 @@ if (res.status === "away") console.log(res.message);             // "Back around
 if (res.status === "clarification") console.log(res.question);   // 'Sorry, what does "idempotent" mean?'
 ```
 
+`runWhenAvailable` handles both detours for you: it waits out breaks and, given `onClarification`, answers questions and retries.
+
+```ts
+const res = await averey.runWhenAvailable(
+  { task, history, signal },   // history: earlier turns; signal: AbortSignal to cancel
+  { onClarification: async (question, words) => explain(words) },  // return undefined to stop and ask the user
+);
+// res.taskId can be passed as `continues` later; res.trace.truncated says if the reply hit the token limit.
+```
+
 ## How a call works
 
 1. **Availability gate.** Bathroom, meal, social media, the daily online argument, and salary research are scheduled blocks. During one, `run` returns `away` with a return time and does not call the model. `runWhenAvailable` waits it out.
@@ -47,7 +57,18 @@ if (res.status === "clarification") console.log(res.question);   // 'Sorry, what
 | Defensive after being wrong, apologizes a day or two later | `reportError()` | `defensive`, `apology` |
 | Implicit bias | see below | n/a |
 
-Every number lives in `src/config.ts` and can be overridden per instance. Switch any effect off with `disabledModifiers: ["tired"]`.
+Every number lives in `src/config.ts` and can be overridden per instance; invalid values throw at construction with every problem listed. Switch any effect off with `disabledModifiers: ["tired"]` (unknown ids throw). Add your own effects per instance:
+
+```ts
+new Averey({
+  provider,
+  modifiers: {
+    monday: ({ now }) => isMonday(now)
+      ? { id: "monday", label: "Monday", multiplier: 0.9, hints: ["It is Monday and you are slow to get going."] }
+      : null,
+  },
+});
+```
 
 ## Telling Averey things
 
@@ -81,7 +102,8 @@ console.table(team.biasReport());
 ## Time, state, and simulation
 
 - Use a `VirtualClock` to fast-forward. Runs advance it by their effort automatically.
-- `FileStateStore("./.averey-state.json")` keeps hours worked, compliments, grudges, and memory across restarts.
+- `FileStateStore("./.averey-state.json")` keeps hours worked, compliments, grudges, and memory across restarts. Without it, every new process is a fresh morning (no coffee yet). A corrupt file logs a warning and starts fresh.
+- Calls are booked back to back, like one person working through a queue, so a burst of requests adds hours gradually instead of all at once.
 - `averey.status()` shows current performance, active modifiers, hours worked, and availability without making a call.
 - Every result has a `trace` (modifiers, levers, comprehension, memory, typo count, system prompt).
 
@@ -92,7 +114,7 @@ npm run simulate -- --days 3 --verbose         # performance timeline
 
 ## Providers
 
-Implement `LLMProvider` (`complete(request)` plus `capabilities`) to add one. `AnthropicProvider` talks to the Messages API over `fetch` with no SDK. If your model rejects `temperature`, pass `supportsTemperature: false`. `MockProvider` is for tests.
+Implement `LLMProvider` (`complete(request)` plus `capabilities`) to add one; honor `request.signal` and set `truncated` on the response if you can. `AnthropicProvider` talks to the Messages API over `fetch` with no SDK. It retries rate limits, overload, and 5xx errors (`maxRetries`, default 2, honoring `retry-after`) and times out each attempt (`timeoutMs`, default 60s). If your model rejects `temperature`, pass `supportsTemperature: false`. `MockProvider` is for tests.
 
 ## Development
 

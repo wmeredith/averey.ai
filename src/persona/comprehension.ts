@@ -1,5 +1,6 @@
 import type { AvereyConfig } from "../config.js";
 import type { Rng } from "../core/rng.js";
+import { mapProse, stripVerbatim } from "./verbatim.js";
 
 /**
  * Words an average 7th-8th grader knows even though they are long.
@@ -45,6 +46,54 @@ wheel whenever where whether which while white whole whose window winter wish wi
 wonderful word work world worry would write wrong yellow yesterday young yourself
 attachment document email meeting schedule website software password account download upload
 feedback deadline budget invoice payment customer manager employee project update review
+absolutely accept accident account accounting action active activity actual addition additional adjust
+admit advance advantage adventure advertise advice afford afraid agency agenda agreement airline
+airport allow alright amount anniversary announce announcement annual anybody apartment apologize
+apology application apply appointment appreciate approval approve argument arrange arrival arrive
+article artist assignment assistant attach attend attitude audience author automatic average avoid
+awesome awkward background backup bakery banana bargain basement basically basket bathroom battery
+beautiful bedroom beginning behavior benefit billion blanket borrow bother bottle breakfast brilliant
+broken brochure brought bullet bundle burger butter button cabinet calendar calculate calculator
+camping cancel candidate capital carefully carpet cartoon casual category caught celebrate
+celebration chance channel charge chicken chocolate citizen classroom client clothing coach collect
+collection comment commercial communicate competition complain complaint completely complicated
+concert condition conference confident confirm confused confusing connect connection contact
+contract conversation corner counter coupon courage creative credit crowded culture curious
+currently curtain damage dangerous database decorate degree delete deliver delivery department
+deposit description dessert detail dictionary director disagree disappear disappointed discount
+discussion district divide document dollar donate drawer driver duplicate effort election
+electric electricity elevator emergency employer encourage engineer entrance equipment error
+estimate everybody everywhere exactly excellent exchange excuse exhausted expensive expert
+explanation factory familiar fashion fault february feature festival fifteen finance financial
+flight flower folder follow forecast forever formal fortune forward frequently friendly
+frightened furniture garage gasoline generally generous gesture glasses grocery guarantee guest
+guitar habit handle handwriting hardware headline headphones helpful highlight hockey honestly
+horrible hospital hotel housework however humor ignore illness immediately impossible improve
+income increase incredible independent indoor injury insurance internet interview introduce
+invitation invite january jacket jewelry journal judge july keyboard kindergarten label ladder
+laptop lawyer leader license lifestyle limit liquid lobby location locker lottery luggage
+mailbox maintain majority marketing marriage massive meanwhile measure mechanic medical medium
+mention menu method microwave midnight military minimum minus mission mobile monitor monthly
+motivate motorcycle muscle museum mystery narrow negative neighborhood nervous network nobody
+notebook notification november obvious obviously occasion october offer officer online opposite
+option orange organize original outdoor overtime package painting pancake paragraph parking
+partner passenger pattern payroll pencil penalty percent percentage period permission personal
+photograph physical pickup planning plastic platform pleasant pocket poison policy polite
+politics positive postpone potato powerful practical prepare present president pressure printer
+priority private process product professional professor profile profit program progress property
+proposal provide purchase puzzle quality quantity quarter quarterly random rarely reaction
+reading receipt recipe recommend refund refrigerator region regular relationship relax release
+reminder remove rental repair replace reply request reservation resource response restaurant
+resume retire rhythm ribbon routine salary sandwich saturday schedule scissors screen season
+seconds security select seminar senior separate september session settle shipping shipment
+shopping signature simply situation slightly smartphone soccer solution somebody somewhere
+spreadsheet staff standard statement storage strategy stranger stressed structure stupid style
+summarize summary sunday supermarket supply support surprised survey sweater symbol target
+technology teenager temperature tennis terrific text thirsty thursday timesheet timeline title
+toilet tomato total tourist towel traffic training transfer translate transport treatment
+tuesday typical uncle uniform unusual upset upstairs vacation vegetable version video
+volunteer wallet warning wednesday website weekday weekend whenever wireless workplace worried
+yesterday
 `
   .split(/\s+/)
   .filter(Boolean);
@@ -71,10 +120,29 @@ function stems(word: string): string[] {
   const out = [word];
   for (const suffix of ["ing", "ed", "es", "s", "ly", "er", "est", "d"]) {
     if (word.endsWith(suffix) && word.length - suffix.length >= 3) {
-      out.push(word.slice(0, -suffix.length));
+      const base = word.slice(0, -suffix.length);
+      out.push(base);
+      if (suffix === "ing" || suffix === "ed") out.push(`${base}e`);
+    }
+  }
+  // entries -> entry, friendlier -> friendly, happiest -> happy
+  for (const suffix of ["ies", "ied", "ier", "iest", "ily"]) {
+    if (word.endsWith(suffix) && word.length - suffix.length >= 3) {
+      out.push(`${word.slice(0, -suffix.length)}y`);
     }
   }
   return out;
+}
+
+/** True when the word at `index` is the first word of a sentence or line. */
+function startsSentence(text: string, index: number): boolean {
+  for (let i = index - 1; i >= 0; i--) {
+    const ch = text[i]!;
+    if (ch === "\n") return true;
+    if (ch === " " || ch === "\t" || ch === "\r") continue;
+    return ".!?:".includes(ch);
+  }
+  return true;
 }
 
 function isKnownCommon(word: string): boolean {
@@ -88,13 +156,6 @@ export function isHardWord(word: string): boolean {
   const syl = countSyllables(w);
   if (syl >= 4 || w.length >= 10) return true;
   return syl === 3 && w.length >= 8;
-}
-
-function stripVerbatim(text: string): string {
-  return text
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/`[^`]*`/g, " ")
-    .replace(/https?:\/\/\S+/g, " ");
 }
 
 /** Hard words in the text, hardest first, lowercase and unique. */
@@ -111,9 +172,7 @@ export function findHardWords(
     const lower = word.toLowerCase();
     if (known.has(lower) || seen.has(lower)) continue;
     if (!isHardWord(lower)) continue;
-    const before = clean.slice(0, m.index).trimEnd();
-    const startsSentence = before === "" || /[.!?:\n]$/.test(before);
-    if (/^[A-Z]/.test(word) && !startsSentence) continue; // probably a name
+    if (/^[A-Z]/.test(word) && !startsSentence(clean, m.index)) continue; // probably a name
     seen.set(lower, countSyllables(lower) * 2 + lower.length);
   }
   return [...seen.entries()]
@@ -196,7 +255,7 @@ export function interpret(
       const as = malapropism(word, rng);
       if (as) {
         result.misread.push({ word, as });
-        working = replaceWord(working, word, as);
+        working = mapProse(working, (prose) => replaceWord(prose, word, as));
       } else {
         result.skimmed.push(word);
       }

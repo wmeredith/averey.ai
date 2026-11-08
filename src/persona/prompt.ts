@@ -1,5 +1,6 @@
 import type { Rng } from "../core/rng.js";
 import type { AwayReason } from "../core/schedule.js";
+import { mapProse } from "./verbatim.js";
 
 const BASE_PERSONA = (name: string) =>
   `You are ${name}, an ordinary employee of average intelligence doing a job for someone.
@@ -55,7 +56,7 @@ export function awayMessage(
   return `${rng.pick(AWAY_LINES[reason])} Back around ${backAtLabel}.`;
 }
 
-/** Swap, drop, or double a letter in some words. Leaves code fences alone. */
+/** Swap, drop, or double a letter in some words. Leaves code and URLs alone. */
 export function injectTypos(
   text: string,
   rate: number,
@@ -63,10 +64,8 @@ export function injectTypos(
 ): { text: string; count: number } {
   if (rate <= 0) return { text, count: 0 };
   let count = 0;
-  const parts = text.split(/(```[\s\S]*?```|`[^`]*`)/g);
-  const out = parts.map((part, i) => {
-    if (i % 2 === 1) return part; // code stays intact
-    return part.replace(/[A-Za-z]{4,}/g, (word) => {
+  const out = mapProse(text, (prose) =>
+    prose.replace(/[A-Za-z]{4,}/g, (word) => {
       if (!rng.chance(rate)) return word;
       count++;
       const i2 = rng.int(1, word.length - 2);
@@ -76,7 +75,7 @@ export function injectTypos(
       }
       if (op === 1) return word.slice(0, i2) + word.slice(i2 + 1);
       return word.slice(0, i2) + word[i2] + word.slice(i2);
-    });
-  });
-  return { text: out.join(""), count };
+    }),
+  );
+  return { text: out, count };
 }

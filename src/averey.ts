@@ -4,7 +4,7 @@ import {
   resolveConfig,
 } from "./config.js";
 import { type Clock, SystemClock, VirtualClock } from "./core/clock.js";
-import { type SeedPart, rngFor } from "./core/rng.js";
+import { type Rng, type SeedPart, rngFor } from "./core/rng.js";
 import {
   type AwayReason,
   type Availability,
@@ -22,10 +22,15 @@ import {
 import { DAY, HOUR, MIN, formatTime } from "./core/time.js";
 import { type Levers, computeLevers } from "./levers.js";
 import { LossyMemory, type RecallResult } from "./memory.js";
-import { type Modifier, computeModifiers } from "./modifiers.js";
-import { interpret } from "./persona/comprehension.js";
+import {
+  MODIFIERS,
+  type Modifier,
+  type ModifierFn,
+  computeModifiers,
+} from "./modifiers.js";
+import { type ComprehensionResult, interpret } from "./persona/comprehension.js";
 import { awayMessage, buildSystemPrompt, injectTypos } from "./persona/prompt.js";
-import type { LLMProvider } from "./providers/types.js";
+import type { LLMMessage, LLMProvider, LLMRequest } from "./providers/types.js";
 import {
   HeuristicSincerityScorer,
   type SincerityScorer,
@@ -39,6 +44,8 @@ export interface AvereyOptions {
   seed?: SeedPart;
   store?: StateStore;
   sincerity?: SincerityScorer;
+  /** Extra modifiers for this instance. An id that matches a built-in replaces it. */
+  modifiers?: Record<string, ModifierFn>;
 }
 
 export interface RunInput {
@@ -49,12 +56,16 @@ export interface RunInput {
   continues?: string;
   /** Background material. Averey only "reads" part of it when performing poorly. */
   context?: string;
+  /** Earlier turns of the conversation, sent to the model before this task. */
+  history?: LLMMessage[];
   /** Simulated minutes of work this run represents. */
   effortMinutes?: number;
   /** Meanings for words Averey asked about. Averey remembers them. */
   glossary?: Record<string, string>;
   /** Extra condition hints, used by AvereyTeam. */
   extraHints?: string[];
+  /** Cancels the model call. */
+  signal?: AbortSignal;
 }
 
 export interface TraceModifier {
@@ -76,12 +87,20 @@ export interface Trace {
   };
   memory?: RecallResult;
   typos?: number;
+  /** True when the reply was cut off by the token limit. */
+  truncated?: boolean;
   durationMinutes?: number;
   systemPrompt?: string;
 }
 
 export type RunResult =
-  | { status: "ok"; output: string; trace: Trace }
+  | {
+      status: "ok";
+      output: string;
+      /** Pass as `continues` in a later run to have Averey recall this task. */
+      taskId: string;
+      trace: Trace;
+    }
   | {
       status: "away";
       reason: AwayReason;
@@ -96,6 +115,19 @@ export type RunResult =
       trace: Trace;
     };
 
+export interface RunWhenAvailableOptions {
+  /** On a real clock, the longest break to sleep through. Default 1 hour. */
+  maxWaitMs?: number;
+  /**
+   * Answers Averey's questions about words. Return meanings to retry with them
+   * as a glossary, or undefined to hand the clarification back to the caller.
+   */
+  onClarification?: (
+    question: string,
+    words: string[],
+  ) => Record<string, string> | undefined | Promise<Record<string, string> | undefined>;
+}
+
 export interface Status {
   at: number;
   performance: number;
@@ -105,10 +137,14 @@ export interface Status {
   availability: Availability;
 }
 
+/** The start of the text, cut at a word boundary, like someone who stopped reading. */
 function clampText(text: string, fraction: number): string {
   if (fraction >= 1 || text.length === 0) return text;
   const keep = Math.max(1, Math.floor(text.length * fraction));
-  return keep >= text.length ? text : `...${text.slice(text.length - keep)}`;
+  if (keep >= text.length) return text;
+  const space = text.lastIndexOf(" ", keep);
+  const cut = space > keep * 0.8 ? space : keep;
+  return `${text.slice(0, cut).trimEnd()} ...`;
 }
 
 function toTraceModifiers(mods: Modifier[]): TraceModifier[] {
@@ -123,6 +159,7 @@ export class Averey {
   private readonly seed: SeedPart;
   private readonly store: StateStore;
   private readonly sincerity: SincerityScorer;
+  private readonly modifierRegistry: Readonly<Record<string, ModifierFn>>;
   private state: WorkerState;
   private runCounter = 0;
 
@@ -133,6 +170,14 @@ export class Averey {
     this.seed = options.seed ?? "averey";
     this.store = options.store ?? new InMemoryStore();
     this.sincerity = options.sincerity ?? new HeuristicSincerityScorer();
+    this.modifierRegistry = { ...MODIFIERS, ...options.modifiers };
+    const known = Object.keys(this.modifierRegistry);
+    const unknown = this.config.disabledModifiers.filter((id) => !known.includes(id));
+    if (unknown.length > 0) {
+      throw new Error(
+        `Unknown modifier id in disabledModifiers: ${unknown.join(", ")}. Known: ${known.join(", ")}`,
+      );
+    }
     this.schedule = new Schedule(this.seed, this.config);
     this.state = hydrate(this.store.load());
   }
@@ -143,7 +188,7 @@ export class Averey {
 
   /** A read-only copy of internal state, mostly for debugging and tests. */
   snapshot(): WorkerState {
-    return JSON.parse(JSON.stringify(this.state)) as WorkerState;
+    return structuredClone(this.state);
   }
 
   // ---- inspection ---------------------------------------------------------
@@ -157,12 +202,8 @@ export class Averey {
   }
 
   status(at: number = this.clock.now()): Status {
-    const { performance, modifiers } = this.modifiersAt(at);
     return {
-      at,
-      performance,
-      modifiers: toTraceModifiers(modifiers),
-      hoursWorked24h: this.hoursWorkedAt(at),
+      ...this.baseTrace(at),
       sick: this.schedule.sickAt(at),
       availability: this.availability(at),
     };
@@ -228,79 +269,161 @@ export class Averey {
   async run(input: RunInput): Promise<RunResult> {
     const now = this.clock.now();
     const avail = this.schedule.availability(now);
-    if (!avail.available) {
-      const rng = rngFor(this.seed, "away", now);
-      return {
-        status: "away",
-        reason: avail.reason,
-        backAt: avail.backAt,
-        message: awayMessage(
-          avail.reason,
-          formatTime(avail.backAt, this.config.utcOffsetMinutes),
-          rng,
-        ),
-        trace: this.baseTrace(now),
-      };
-    }
+    if (!avail.available) return this.awayResult(avail, now);
 
-    this.registerEngagement(now);
     const rng = rngFor(this.seed, "run", now, this.runCounter++);
+    const { performance, modifiers } = this.modifiersAt(now);
+    const trace = this.traceOf(now, performance, modifiers);
 
-    for (const [word, meaning] of Object.entries(input.glossary ?? {})) {
+    // Saved on every path, including a failed model call, so the store
+    // always matches what Averey heard and remembered.
+    try {
+      this.registerEngagement(now);
+      this.learnWords(input.glossary);
+
+      const understood = this.comprehend(input.task, performance, rng, trace);
+      if (understood.question) {
+        return {
+          status: "clarification",
+          question: understood.question,
+          words: understood.asked,
+          trace,
+        };
+      }
+
+      const taskId = input.taskId ?? `task-${now}-${this.runCounter}`;
+      const recalled = this.remember(taskId, input, performance, now, rng, trace);
+      const levers = computeLevers(performance, this.config, this.provider.capabilities);
+      trace.levers = levers;
+
+      const request = this.buildRequest(
+        input,
+        understood,
+        recalled,
+        modifiers,
+        levers,
+      );
+      trace.systemPrompt = request.system;
+      const response = await this.provider.complete(request);
+      trace.truncated = response.truncated ?? false;
+
+      const typos = injectTypos(response.text, levers.typoRate, rng);
+      trace.typos = typos.count;
+
+      this.bookWork(
+        now,
+        input.effortMinutes ?? this.config.defaultEffortMinutes,
+        modifiers,
+        trace,
+      );
+      return { status: "ok", output: typos.text, taskId, trace };
+    } finally {
+      this.persist();
+    }
+  }
+
+  /**
+   * Like `run`, but waits out breaks and, with `onClarification`, answers
+   * Averey's questions. On a VirtualClock it jumps ahead; on a real clock it
+   * sleeps, up to `maxWaitMs`, otherwise returns the away result.
+   */
+  async runWhenAvailable(
+    input: RunInput,
+    options: RunWhenAvailableOptions = {},
+  ): Promise<RunResult> {
+    const maxWait = options.maxWaitMs ?? HOUR;
+    let current = input;
+    for (let i = 0; i < 20; i++) {
+      const result = await this.run(current);
+      if (result.status === "ok") return result;
+      if (result.status === "clarification") {
+        const answers = await options.onClarification?.(result.question, result.words);
+        if (!answers) return result;
+        current = { ...current, glossary: { ...current.glossary, ...answers } };
+        continue;
+      }
+      if (this.clock instanceof VirtualClock) {
+        this.clock.set(result.backAt);
+        continue;
+      }
+      const wait = result.backAt - this.clock.now();
+      if (wait > maxWait) return result;
+      await new Promise((resolve) => setTimeout(resolve, Math.max(0, wait)));
+    }
+    return this.run(current);
+  }
+
+  // ---- run stages ---------------------------------------------------------
+
+  private awayResult(
+    avail: Extract<Availability, { available: false }>,
+    now: number,
+  ): RunResult {
+    return {
+      status: "away",
+      reason: avail.reason,
+      backAt: avail.backAt,
+      message: awayMessage(
+        avail.reason,
+        formatTime(avail.backAt, this.config.utcOffsetMinutes),
+        rngFor(this.seed, "away", now),
+      ),
+      trace: this.baseTrace(now),
+    };
+  }
+
+  private learnWords(glossary: Record<string, string> | undefined): void {
+    for (const [word, meaning] of Object.entries(glossary ?? {})) {
       this.state.learnedWords[word.toLowerCase()] = meaning;
     }
+  }
 
-    const { performance, modifiers } = this.modifiersAt(now);
-    const trace: Trace = {
-      ...this.baseTrace(now),
-      performance,
-      modifiers: toTraceModifiers(modifiers),
-    };
-
-    // 1. Comprehension: Averey may ask what a word means instead of working.
+  /** Averey may ask what a word means, misread it, or skim past it. */
+  private comprehend(
+    task: string,
+    performance: number,
+    rng: Rng,
+    trace: Trace,
+  ): ComprehensionResult {
     const known = new Set(Object.keys(this.state.learnedWords));
-    const understood = interpret(
-      input.task,
-      known,
-      performance,
-      this.config.comprehension,
-      rng,
-    );
+    const understood = interpret(task, known, performance, this.config.comprehension, rng);
     trace.comprehension = {
       asked: understood.asked,
       misread: understood.misread,
       skimmed: understood.skimmed,
     };
-    if (understood.question) {
-      this.persist();
-      return {
-        status: "clarification",
-        question: understood.question,
-        words: understood.asked,
-        trace,
-      };
-    }
+    return understood;
+  }
 
-    // 2. Memory: remember this task, and recall (maybe wrongly) any earlier one.
+  /** Stores this task and recalls (maybe wrongly) the one it continues. */
+  private remember(
+    taskId: string,
+    input: RunInput,
+    performance: number,
+    now: number,
+    rng: Rng,
+    trace: Trace,
+  ): RecallResult | undefined {
     const memory = new LossyMemory(this.state.memory, this.config.memory);
-    const taskId = input.taskId ?? `task-${now}-${this.runCounter}`;
     memory.store(taskId, input.task, now);
-    let recalled: RecallResult | undefined;
-    if (input.continues) {
-      recalled = memory.recall(input.continues, {
-        performance,
-        stress: this.schedule.planAt(now).stress,
-        now,
-        rng,
-      });
-      trace.memory = recalled;
-    }
+    if (!input.continues) return undefined;
+    const recalled = memory.recall(input.continues, {
+      performance,
+      stress: this.schedule.planAt(now).stress,
+      now,
+      rng,
+    });
+    trace.memory = recalled;
+    return recalled;
+  }
 
-    // 3. Levers: how performance changes the actual model call.
-    const levers = computeLevers(performance, this.config, this.provider.capabilities);
-    trace.levers = levers;
-
-    // 4. Build the prompt and call the model.
+  private buildRequest(
+    input: RunInput,
+    understood: ComprehensionResult,
+    recalled: RecallResult | undefined,
+    modifiers: Modifier[],
+    levers: Levers,
+  ): LLMRequest {
     const hints = [
       ...modifiers.flatMap((m) => m.hints),
       ...levers.compensationHints,
@@ -311,8 +434,6 @@ export class Averey {
         `Some words in the request are over your head (${understood.skimmed.map((w) => `"${w}"`).join(", ")}). You are not sure what they mean and you just kind of go along with it.`,
       );
     }
-    const system = buildSystemPrompt({ name: this.config.name, hints });
-    trace.systemPrompt = system;
 
     const parts: string[] = [understood.text];
     const notes = Object.entries(input.glossary ?? {}).map(
@@ -320,9 +441,7 @@ export class Averey {
     );
     if (notes.length > 0) parts.push(`(You were told: ${notes.join(" ")})`);
     if (recalled) {
-      parts.push(
-        `What you remember about the earlier job: ${recalled.recalled}`,
-      );
+      parts.push(`What you remember about the earlier job: ${recalled.recalled}`);
     }
     if (input.context) {
       parts.push(
@@ -330,65 +449,54 @@ export class Averey {
       );
     }
 
-    const response = await this.provider.complete({
-      system,
-      messages: [{ role: "user", content: parts.join("\n\n") }],
+    return {
+      system: buildSystemPrompt({ name: this.config.name, hints }),
+      messages: [
+        ...(input.history ?? []),
+        { role: "user", content: parts.join("\n\n") },
+      ],
       temperature: levers.temperature,
       maxTokens: this.provider.capabilities.maxTokens ? levers.maxTokens : undefined,
-    });
+      signal: input.signal,
+    };
+  }
 
-    // 5. Output: tired people make typos.
-    const typos = injectTypos(response.text, levers.typoRate, rng);
-    trace.typos = typos.count;
-
-    // 6. Book the work and clear the apology, now that the call succeeded.
-    const effort = input.effortMinutes ?? this.config.defaultEffortMinutes;
+  /** Logs the work, clears a delivered apology, and advances a virtual clock. */
+  private bookWork(
+    now: number,
+    effort: number,
+    modifiers: Modifier[],
+    trace: Trace,
+  ): void {
     const elapsed = (this.clock.now() - now) / MIN;
     const duration = Math.max(effort, elapsed);
     trace.durationMinutes = duration;
-    this.state.workLog.push({ start: now, end: now + duration * MIN });
+    // One person works on one thing at a time: queue behind unfinished work
+    // so bursts of calls cannot count the same minutes twice.
+    const start = Math.max(now, this.busyUntil());
+    const end = start + duration * MIN;
+    this.state.workLog.push({ start, end });
     if (modifiers.some((m) => m.id === "apology") && this.state.defensive) {
       this.state.defensive.apologized = true;
     }
-    if (this.clock instanceof VirtualClock) this.clock.advanceMinutes(duration);
-    this.prune(this.clock.now());
-    this.persist();
-
-    return { status: "ok", output: typos.text, trace };
-  }
-
-  /**
-   * Like `run`, but waits out breaks. On a VirtualClock it jumps ahead; on a
-   * real clock it sleeps, up to `maxWaitMs`, otherwise returns the away result.
-   */
-  async runWhenAvailable(
-    input: RunInput,
-    options: { maxWaitMs?: number } = {},
-  ): Promise<RunResult> {
-    const maxWait = options.maxWaitMs ?? HOUR;
-    for (let i = 0; i < 20; i++) {
-      const result = await this.run(input);
-      if (result.status !== "away") return result;
-      if (this.clock instanceof VirtualClock) {
-        this.clock.set(result.backAt);
-        continue;
-      }
-      const wait = result.backAt - this.clock.now();
-      if (wait > maxWait) return result;
-      await new Promise((resolve) => setTimeout(resolve, Math.max(0, wait)));
+    if (this.clock instanceof VirtualClock) {
+      this.clock.set(Math.max(this.clock.now(), end));
     }
-    return this.run(input);
+    this.prune(this.clock.now());
   }
 
   // ---- internals ----------------------------------------------------------
 
   private modifiersAt(at: number) {
-    return computeModifiers({
-      now: at,
-      config: this.config,
-      state: this.state,
-      schedule: this.schedule,
-    });
+    return computeModifiers(
+      {
+        now: at,
+        config: this.config,
+        state: this.state,
+        schedule: this.schedule,
+      },
+      this.modifierRegistry,
+    );
   }
 
   private hoursWorkedAt(at: number): number {
@@ -399,14 +507,22 @@ export class Averey {
     );
   }
 
-  private baseTrace(at: number): Trace {
-    const { performance, modifiers } = this.modifiersAt(at);
+  private busyUntil(): number {
+    return this.state.workLog.reduce((latest, w) => Math.max(latest, w.end), 0);
+  }
+
+  private traceOf(at: number, performance: number, modifiers: Modifier[]): Trace {
     return {
       at,
       performance,
       modifiers: toTraceModifiers(modifiers),
       hoursWorked24h: this.hoursWorkedAt(at),
     };
+  }
+
+  private baseTrace(at: number): Trace {
+    const { performance, modifiers } = this.modifiersAt(at);
+    return this.traceOf(at, performance, modifiers);
   }
 
   private registerEngagement(now: number): void {

@@ -107,8 +107,8 @@ async function main() {
       }
       const task = rng.pick(TASKS);
       let result = await averey.run({ task, effortMinutes: 25 });
-
-      if (result.status === "clarification") {
+      // Each answer is learned, so this ends once every hard word is explained.
+      while (result.status === "clarification") {
         asked++;
         const glossary = Object.fromEntries(result.words.map((w) => [w, "a fancy word for something simple"]));
         result = await averey.run({ task, glossary, effortMinutes: 25 });

@@ -93,7 +93,7 @@ export class AvereyTeam {
 
   /**
    * `from` sends `text` to the Averey called `to`, who works on it.
-   * If `from` is a sick Averey, `to` catches the effects.
+   * If either side is a sick Averey, the other catches the effects.
    */
   async send(
     fromName: string,
@@ -110,9 +110,9 @@ export class AvereyTeam {
     const extraHints = [...(options.extraHints ?? [])];
 
     if (worker.availability(now).available) {
-      if (sender.averey?.isSick(now)) {
-        worker.exposeToIllness(now);
-      }
+      // Contact goes both ways: whoever is sick wears down the other.
+      if (sender.averey?.isSick(now)) worker.exposeToIllness(now);
+      if (sender.averey && worker.isSick(now)) sender.averey.exposeToIllness(now);
       const rng = rngFor("team", toName, fromName, now, this.messageCount++);
       const decision = decideBias(worker.config.bias, sender.labels, rng);
       this.auditLog.push({

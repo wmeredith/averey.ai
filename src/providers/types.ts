@@ -15,10 +15,13 @@ export interface LLMRequest {
   messages: LLMMessage[];
   temperature?: number;
   maxTokens?: number;
+  signal?: AbortSignal;
 }
 
 export interface LLMResponse {
   text: string;
+  /** True when the reply stopped because it hit the token limit. */
+  truncated?: boolean;
   raw?: unknown;
 }
 

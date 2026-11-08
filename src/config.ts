@@ -234,5 +234,63 @@ function merge(base: unknown, patch: unknown): unknown {
 export function resolveConfig(
   patch: DeepPartial<AvereyConfig> = {},
 ): AvereyConfig {
-  return merge(DEFAULT_CONFIG, patch) as AvereyConfig;
+  const config = merge(DEFAULT_CONFIG, patch) as AvereyConfig;
+  validateConfig(config);
+  return config;
+}
+
+/** Throws one error listing every problem, so a bad config fails loudly at construction. */
+export function validateConfig(c: AvereyConfig): void {
+  const problems: string[] = [];
+  const prob = (path: string, v: number) => {
+    if (!(v >= 0 && v <= 1)) problems.push(`${path} must be between 0 and 1 (got ${v})`);
+  };
+  const nonNeg = (path: string, v: number) => {
+    if (!(v >= 0)) problems.push(`${path} must be >= 0 (got ${v})`);
+  };
+  const range = (path: string, [lo, hi]: Range) => {
+    nonNeg(`${path}[0]`, lo);
+    if (!(lo <= hi)) problems.push(`${path} must be [min, max] with min <= max (got [${lo}, ${hi}])`);
+  };
+  const ordered = (loPath: string, lo: number, hiPath: string, hi: number) => {
+    if (!(lo <= hi)) problems.push(`${loPath} (${lo}) must be <= ${hiPath} (${hi})`);
+  };
+
+  ordered("minPerformance", c.minPerformance, "maxPerformance", c.maxPerformance);
+  nonNeg("minPerformance", c.minPerformance);
+  ordered("awakeStartHour", c.awakeStartHour, "awakeEndHour", c.awakeEndHour);
+  if (c.awakeStartHour < 0 || c.awakeEndHour > 24) {
+    problems.push("awakeStartHour and awakeEndHour must be within 0..24");
+  }
+  nonNeg("defaultEffortMinutes", c.defaultEffortMinutes);
+  nonNeg("hours.capHours", c.hours.capHours);
+  ordered("hours.capHours", c.hours.capHours, "hours.windowHours", c.hours.windowHours);
+  nonNeg("hours.decayK", c.hours.decayK);
+  prob("tired.chancePerDay", c.tired.chancePerDay);
+  nonNeg("sickness.episodesPerYear", c.sickness.episodesPerYear);
+  nonNeg("sickness.minDays", c.sickness.minDays);
+  ordered("sickness.minDays", c.sickness.minDays, "sickness.maxDays", c.sickness.maxDays);
+  prob("salary.chancePerDay", c.salary.chancePerDay);
+  prob("compliment.sincerityThreshold", c.compliment.sincerityThreshold);
+  prob("stress.base", c.stress.base);
+  if (!(c.stress.periodDays > 0)) problems.push("stress.periodDays must be > 0");
+  ordered("defensive.minHours", c.defensive.minHours, "defensive.maxHours", c.defensive.maxHours);
+  prob("defensive.apologyChance", c.defensive.apologyChance);
+  range("breaks.bathroom.count", c.breaks.bathroom.count);
+  range("breaks.bathroom.minutes", c.breaks.bathroom.minutes);
+  range("breaks.social.count", c.breaks.social.count);
+  range("breaks.social.minutes", c.breaks.social.minutes);
+  c.breaks.meals.forEach((m, i) => range(`breaks.meals[${i}].minutes`, m.minutes));
+  prob("comprehension.askChance", c.comprehension.askChance);
+  prob("comprehension.misreadChance", c.comprehension.misreadChance);
+  if (!(c.memory.maxItems >= 1)) problems.push("memory.maxItems must be >= 1");
+  prob("levers.minTokenFraction", c.levers.minTokenFraction);
+  prob("levers.minContextFraction", c.levers.minContextFraction);
+  prob("bias.strength", c.bias.strength);
+  prob("bias.selfCorrectionRate", c.bias.selfCorrectionRate);
+  prob("bias.baselineSecondGuess", c.bias.baselineSecondGuess);
+
+  if (problems.length > 0) {
+    throw new Error(`Invalid Averey config:\n- ${problems.join("\n- ")}`);
+  }
 }

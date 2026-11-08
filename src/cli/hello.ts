@@ -7,6 +7,7 @@
  * Needs ANTHROPIC_API_KEY (loaded from .env by the npm script).
  */
 import { Averey } from "../averey.js";
+import { FileStateStore } from "../core/state.js";
 import { AnthropicProvider } from "../providers/anthropic.js";
 
 async function main() {
@@ -18,7 +19,11 @@ async function main() {
   }
 
   const task = process.argv.slice(2).join(" ") || "Say hi and tell me what you are working on today.";
-  const averey = new Averey({ provider: new AnthropicProvider() });
+  // Keeps the day (coffee, hours worked, grudges) between runs of this script.
+  const averey = new Averey({
+    provider: new AnthropicProvider(),
+    store: new FileStateStore(".averey-state.json"),
+  });
 
   const result = await averey.runWhenAvailable({ task }, { maxWaitMs: 0 });
 
@@ -34,6 +39,7 @@ async function main() {
   console.log(result.output);
   console.log("\n--- trace ---");
   console.log(`performance: ${result.trace.performance.toFixed(2)}`);
+  if (result.trace.truncated) console.log("(reply was cut off by the token limit)");
   for (const m of result.trace.modifiers) {
     console.log(`  ${m.id.padEnd(10)} x${m.multiplier.toFixed(2)}  ${m.label}`);
   }

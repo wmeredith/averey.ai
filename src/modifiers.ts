@@ -19,7 +19,7 @@ export interface ModifierContext {
   schedule: Schedule;
 }
 
-type ModifierFn = (ctx: ModifierContext) => Modifier | null;
+export type ModifierFn = (ctx: ModifierContext) => Modifier | null;
 
 function clamp(v: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, v));
@@ -220,7 +220,7 @@ const apology: ModifierFn = (ctx) => {
   };
 };
 
-export const MODIFIERS: Record<string, ModifierFn> = {
+export const MODIFIERS = Object.freeze({
   hours: hoursCap,
   tired: tiredDay,
   pissy: coffee,
@@ -232,17 +232,22 @@ export const MODIFIERS: Record<string, ModifierFn> = {
   stress,
   defensive,
   apology,
-};
+} satisfies Record<string, ModifierFn>);
+
+export type BuiltinModifierId = keyof typeof MODIFIERS;
 
 export interface ModifierResult {
   performance: number;
   modifiers: Modifier[];
 }
 
-export function computeModifiers(ctx: ModifierContext): ModifierResult {
+export function computeModifiers(
+  ctx: ModifierContext,
+  registry: Readonly<Record<string, ModifierFn>> = MODIFIERS,
+): ModifierResult {
   const disabled = new Set(ctx.config.disabledModifiers);
   const modifiers: Modifier[] = [];
-  for (const [id, fn] of Object.entries(MODIFIERS)) {
+  for (const [id, fn] of Object.entries(registry)) {
     if (disabled.has(id)) continue;
     const m = fn(ctx);
     if (m) modifiers.push(m);

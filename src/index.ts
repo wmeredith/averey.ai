@@ -3,6 +3,7 @@ export {
   type AvereyOptions,
   type RunInput,
   type RunResult,
+  type RunWhenAvailableOptions,
   type Status,
   type Trace,
   type TraceModifier,
@@ -17,6 +18,7 @@ export {
 export {
   DEFAULT_CONFIG,
   resolveConfig,
+  validateConfig,
   type AvereyConfig,
   type BiasWeight,
   type DeepPartial,
@@ -38,10 +40,17 @@ export {
 } from "./core/state.js";
 export { computeLevers, type Levers } from "./levers.js";
 export { LossyMemory, type RecallResult } from "./memory.js";
-export { computeModifiers, MODIFIERS, type Modifier } from "./modifiers.js";
+export {
+  computeModifiers,
+  MODIFIERS,
+  type BuiltinModifierId,
+  type Modifier,
+  type ModifierContext,
+  type ModifierFn,
+} from "./modifiers.js";
 export { findHardWords, isHardWord } from "./persona/comprehension.js";
 export { buildSystemPrompt, injectTypos } from "./persona/prompt.js";
-export { AnthropicProvider } from "./providers/anthropic.js";
+export { AnthropicProvider, type AnthropicProviderOptions } from "./providers/anthropic.js";
 export { MockProvider } from "./providers/mock.js";
 export type {
   LLMMessage,

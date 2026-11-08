@@ -5,12 +5,27 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/cli",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20.6"
+  },
   "license": "MIT",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build",
     "simulate": "npm run -s build && node dist/cli/simulate.js",
     "hello": "npm run -s build && node --env-file=.env dist/cli/hello.js"
   },

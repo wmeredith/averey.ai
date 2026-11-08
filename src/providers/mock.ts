@@ -5,8 +5,10 @@ import type {
   ProviderCapabilities,
 } from "./types.js";
 
+type Reply = string | LLMResponse;
+
 export interface MockProviderOptions {
-  respond?: (request: LLMRequest) => string | Promise<string>;
+  respond?: (request: LLMRequest) => Reply | Promise<Reply>;
   capabilities?: Partial<ProviderCapabilities>;
 }
 
@@ -15,7 +17,7 @@ export class MockProvider implements LLMProvider {
   readonly name = "mock";
   readonly capabilities: ProviderCapabilities;
   readonly requests: LLMRequest[] = [];
-  private readonly respond: (r: LLMRequest) => string | Promise<string>;
+  private readonly respond: (r: LLMRequest) => Reply | Promise<Reply>;
 
   constructor(options: MockProviderOptions = {}) {
     this.capabilities = {
@@ -33,6 +35,7 @@ export class MockProvider implements LLMProvider {
 
   async complete(request: LLMRequest): Promise<LLMResponse> {
     this.requests.push(request);
-    return { text: await this.respond(request) };
+    const reply = await this.respond(request);
+    return typeof reply === "string" ? { text: reply } : reply;
   }
 }

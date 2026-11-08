@@ -45,6 +45,8 @@ export type Availability =
   | { available: true }
   | { available: false; reason: AwayReason; backAt: number };
 
+const MAX_CACHED_PLANS = 64;
+
 function clamp(v: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, v));
 }
@@ -92,6 +94,10 @@ export class Schedule {
     if (cached) return cached;
     const plan = this.buildPlan(dayIndex);
     this.plans.set(dayIndex, plan);
+    // Plans are pure, so evicting the oldest-inserted one only costs a rebuild.
+    if (this.plans.size > MAX_CACHED_PLANS) {
+      this.plans.delete(this.plans.keys().next().value!);
+    }
     return plan;
   }
 
