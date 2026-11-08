@@ -31,7 +31,7 @@ const res = await averey.runWhenAvailable(
 
 ## How a call works
 
-1. **Availability gate.** Bathroom, meal, social media, the daily online argument, salary research, and random life events (a puzzle break) are scheduled blocks. During one, `run` returns `away` with a return time and does not call the model. `runWhenAvailable` waits it out.
+1. **Availability gate.** Bathroom, meal, social media, the daily online argument, salary research, and random life events (a puzzle break, a snack run) are scheduled blocks. During one, `run` returns `away` with a return time and does not call the model. `runWhenAvailable` waits it out.
 2. **Modifiers.** Independent effects multiply into one `performance` number (see below).
 3. **Comprehension.** Long unfamiliar words are asked about (`clarification`), misread as a similar common word, or skimmed. Pass `glossary` to answer; Averey remembers.
 4. **Memory.** Tasks are stored. `continues: "<taskId>"` recalls an earlier task, which may have drifted (a number changed, a constraint dropped, blended with another task). The trace shows the original and the recalled version.
@@ -65,7 +65,7 @@ const res = await averey.runWhenAvailable(
 | Rushing to leave, ramping from 4:30 to 6 PM (-15%) | local hour | `eod-rush` |
 | Winter gloom (Nov to Feb, -5%) | local month | `seasonal` |
 | Allergy days in March to May, seeded (-10%) | seeded daily roll in the month window | `allergies` |
-| Random office events: puzzle break | `events` in config, scheduled like breaks | the event id (`games`) |
+| Random office events: puzzle break, snack run | `events` in config, scheduled like breaks | the event id (`games`, `snack`) |
 | Misremembers tasks | lossy memory | n/a |
 | Defensive after being wrong, apologizes a day or two later | `reportError()` | `defensive`, `apology` |
 | Implicit bias | see below | n/a |

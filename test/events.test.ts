@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   Averey,
+  DEFAULT_CONFIG,
   MockProvider,
   Schedule,
   VirtualClock,
   resolveConfig,
   type LifeEventConfig,
 } from "../src/index.js";
+import { hourRangesOf } from "../src/config.js";
 import { HOUR, MIN, dayIndexOf, localHour } from "../src/core/time.js";
 import { MONDAY_9AM, makeAverey, quietConfig } from "./helpers.js";
 
@@ -253,5 +255,70 @@ describe("life events: config checks", () => {
   it("replaces the default events when events is set", () => {
     expect(resolveConfig({ events: [] }).events).toEqual([]);
     expect(resolveConfig({}).events.map((e) => e.id)).toContain("games");
+  });
+});
+
+describe("default office events", () => {
+  const byId = (id: string) => DEFAULT_CONFIG.events.find((e) => e.id === id)!;
+  const forced = (id: string): LifeEventConfig => ({ ...byId(id), chancePerDay: 1 });
+  const ids = ["snack"];
+
+  it("ships all of them next to the puzzle break", () => {
+    expect(DEFAULT_CONFIG.events.map((e) => e.id)).toEqual(["games", ...ids]);
+  });
+
+  it("gives every away event lines of its own", () => {
+    for (const e of DEFAULT_CONFIG.events.filter((x) => x.away)) {
+      expect(e.awayLines?.length, e.id).toBeGreaterThan(0);
+    }
+  });
+
+  it.each(ids)("%s lands in its window, for its duration", (id) => {
+    const event = forced(id);
+    const windows = hourRangesOf(event);
+    for (let i = 0; i < 30; i++) {
+      const { averey } = makeAverey({ events: [event] }, { seed: `${id}${i}` });
+      const block = blockOf(averey, id)!;
+      expect(block, `${id} seed ${i}`).toBeDefined();
+      expect(block.away).toBe(event.away);
+      const minutes = (block.end - block.start) / MIN;
+      expect(minutes).toBeGreaterThanOrEqual(event.minutes[0] - 1e-9);
+      expect(minutes).toBeLessThanOrEqual(event.minutes[1] + 1e-9);
+      if (windows.length > 0) {
+        const start = localHour(block.start, 0);
+        const end = localHour(block.end, 0);
+        expect(windows.some(([lo, hi]) => start >= lo && end <= hi), `${id} ${start}-${end}`).toBe(true);
+      }
+    }
+  });
+
+  it("snack happens mid-morning or mid-afternoon, never in between", () => {
+    const seen = new Set<string>();
+    for (let i = 0; i < 40; i++) {
+      const { averey } = makeAverey({ events: [forced("snack")] }, { seed: `s${i}` });
+      const h = localHour(blockOf(averey, "snack")!.start, 0);
+      seen.add(h < 12 ? "morning" : "afternoon");
+      expect(h < 11 || h >= 14.5).toBe(true);
+    }
+    expect([...seen].sort()).toEqual(["afternoon", "morning"]);
+  });
+
+  it("each away event answers in its own words", async () => {
+    for (const id of ["snack"]) {
+      const event = forced(id);
+      const { averey, clock } = makeAverey({ events: [event] });
+      clock.set(blockOf(averey, id)!.start + 30_000);
+      const r = await averey.run({ task: "hi" });
+      expect(r.status, id).toBe("away");
+      const message = r.status === "away" ? r.message : "";
+      expect(event.awayLines!.some((l) => message.startsWith(l)), `${id}: ${message}`).toBe(true);
+    }
+  });
+
+  it("checks every window of a multi-window hourRange", () => {
+    const bad = () =>
+      resolveConfig({ events: [{ ...puzzle, hourRange: [[9, 10], [12, 11]] }] });
+    expect(bad).toThrow(/hourRange\[1\]/);
+    expect(() => resolveConfig({ events: [{ ...puzzle, hourRange: [] }] })).not.toThrow();
   });
 });

@@ -1,4 +1,4 @@
-import type { AvereyConfig } from "../config.js";
+import { type AvereyConfig, hourRangesOf } from "../config.js";
 import { type Rng, type SeedPart, rngFor, hashFloat } from "./rng.js";
 import {
   HOUR,
@@ -201,7 +201,9 @@ export class Schedule {
       const er = rngFor(this.seed, "event", event.id, dayIndex);
       if (!er.chance(event.chancePerDay)) continue;
       const minutes = er.range(event.minutes[0], event.minutes[1]);
-      place(event.id, minutes, { rng: er, hours: event.hourRange, away: event.away });
+      const ranges = hourRangesOf(event);
+      const hours = ranges.length > 1 ? er.pick(ranges) : ranges[0];
+      place(event.id, minutes, { rng: er, hours, away: event.away });
     }
 
     blocks.sort((a, b) => a.start - b.start);

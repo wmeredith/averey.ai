@@ -25,8 +25,12 @@ export interface LifeEventConfig {
   label?: string;
   chancePerDay: number;
   minutes: Range;
-  /** Local hours the event must fall inside. Default: Averey's awake hours. */
-  hourRange?: Range;
+  /**
+   * Local hours the event must fall inside. Give a list of ranges to have one
+   * picked at random each day (e.g. mid-morning or mid-afternoon).
+   * Default: Averey's awake hours.
+   */
+  hourRange?: Range | Range[];
   /** True: Averey is unavailable. False: present, with the modifier active during it. */
   away: boolean;
   /** How long the effect lingers after the event ends. */
@@ -37,6 +41,13 @@ export interface LifeEventConfig {
   hint?: string;
   /** What Averey says when someone asks during an away event. */
   awayLines?: string[];
+}
+
+/** An event's `hourRange` as a list of ranges (empty means no restriction). */
+export function hourRangesOf(event: LifeEventConfig): Range[] {
+  const r = event.hourRange;
+  if (!r) return [];
+  return typeof r[0] === "number" ? [r as Range] : (r as Range[]);
 }
 
 export interface BiasWeight {
@@ -226,6 +237,21 @@ export const DEFAULT_CONFIG: AvereyConfig = {
       awayLines: [
         "Give me a few, I'm finishing a puzzle.",
         "Quick phone thing, be right back.",
+      ],
+    },
+    {
+      id: "snack",
+      label: "snack run",
+      chancePerDay: 0.6,
+      minutes: [2, 8],
+      hourRange: [
+        [9.5, 11],
+        [14.5, 16.5],
+      ],
+      away: true,
+      awayLines: [
+        "Grabbing a snack, one sec.",
+        "Just running to the kitchen for something.",
       ],
     },
   ],
@@ -435,10 +461,11 @@ export function validateConfig(c: AvereyConfig): void {
     seenEvents.add(e.id);
     prob(`${at}.chancePerDay`, e.chancePerDay);
     range(`${at}.minutes`, e.minutes);
-    if (e.hourRange) {
-      range(`${at}.hourRange`, e.hourRange);
-      if (e.hourRange[1] > 24) problems.push(`${at}.hourRange must be within 0..24`);
-    }
+    hourRangesOf(e).forEach((r, j) => {
+      const rp = Array.isArray(e.hourRange?.[0]) ? `${at}.hourRange[${j}]` : `${at}.hourRange`;
+      range(rp, r);
+      if (r[1] > 24) problems.push(`${rp} must be within 0..24`);
+    });
     if (e.aftermathMinutes !== undefined) nonNeg(`${at}.aftermathMinutes`, e.aftermathMinutes);
     if (e.multiplier !== undefined) nonNeg(`${at}.multiplier`, e.multiplier);
   });
