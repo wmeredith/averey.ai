@@ -26,6 +26,7 @@ export const TRAIT_MODIFIERS = [
   "seasonal",
   "allergies",
   "overconfident",
+  "imposter",
 ];
 
 /**

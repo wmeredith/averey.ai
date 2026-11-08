@@ -241,3 +241,43 @@ describe("easy-task confidence", () => {
     expect((await averey.run({ task: "Say hi." })).trace.overconfident).toBe(true);
   });
 });
+
+describe("imposter vocabulary", () => {
+  const on = { enable: ["imposter"] };
+  const hard = "Please optimize the authentication infrastructure documentation.";
+
+  it("bluffs when several hard words are left, and names them", async () => {
+    const { averey, provider } = makeAverey({}, on);
+    const r = await averey.run({ task: hard });
+    expect(r.trace.imposter?.length).toBeGreaterThanOrEqual(3);
+    expect(r.trace.imposter).toContain("authentication");
+    expect(systemOf(provider)).toContain("impressive, important-sounding words");
+  });
+
+  it("stays quiet on a plain request", async () => {
+    const { averey } = makeAverey({}, on);
+    const r = await averey.run({ task: "Write a short reply to the customer." });
+    expect(r.trace.imposter).toBeUndefined();
+  });
+
+  it("stops bluffing about words it has been taught", async () => {
+    const { averey } = makeAverey({}, on);
+    const glossary = Object.fromEntries(
+      ["optimize", "authentication", "infrastructure", "documentation"].map((w) => [w, "a thing"]),
+    );
+    const r = await averey.run({ task: hard, glossary });
+    expect(r.trace.imposter).toBeUndefined();
+  });
+
+  it("is the opposite of easy-task confidence", async () => {
+    const { averey } = makeAverey({}, { enable: ["imposter", "overconfident"] });
+    const r = await averey.run({ task: hard });
+    expect(r.trace.imposter).toBeDefined();
+    expect(r.trace.overconfident).toBeUndefined();
+  });
+
+  it("can be turned off by threshold 0", async () => {
+    const { averey } = makeAverey({ competence: { imposterHardWords: 0 } }, on);
+    expect((await averey.run({ task: hard })).trace.imposter).toBeUndefined();
+  });
+});

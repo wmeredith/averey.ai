@@ -116,10 +116,25 @@ const overconfident: TaskEffect = (ctx) => {
   };
 };
 
+/** Out of depth on several words: bluff with big ones. */
+const imposter: TaskEffect = (ctx) => {
+  const cfg = ctx.config.competence;
+  if (cfg.imposterHardWords <= 0) return null;
+  const hard = findHardWords(ctx.text, knownWords(ctx.state), 10);
+  if (hard.length < cfg.imposterHardWords) return null;
+  return {
+    hints: [
+      `A lot of this request is over your head (${hard.map((w) => `"${w}"`).join(", ")}) and you do not want it to show. You cover for it by using impressive, important-sounding words and jargon, even when you are not sure you are using them right.`,
+    ],
+    trace: { imposter: hard },
+  };
+};
+
 export const TASK_EFFECTS = Object.freeze({
   notification,
   reuse,
   overconfident,
+  imposter,
 } satisfies Record<string, TaskEffect>);
 
 export interface ApplyTaskEffects {

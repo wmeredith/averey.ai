@@ -157,6 +157,8 @@ export interface AvereyConfig {
   competence: {
     /** A task this short, with no hard words, looks easy. */
     easyMaxWords: number;
+    /** This many hard words left in the task and Averey starts bluffing. */
+    imposterHardWords: number;
   };
   stress: {
     base: number;
@@ -394,7 +396,7 @@ export const DEFAULT_CONFIG: AvereyConfig = {
     sincereWindowHours: 96,
     sincerityThreshold: 0.5,
   },
-  competence: { easyMaxWords: 25 },
+  competence: { easyMaxWords: 25, imposterHardWords: 3 },
   stress: { base: 0.55, amplitude: 0.3, maxPenalty: 0.12, periodDays: 5 },
   defensive: {
     minHours: 24,
@@ -513,6 +515,7 @@ export function validateConfig(c: AvereyConfig): void {
   months("allergies.months", c.allergies.months);
   prob("allergies.chancePerDay", c.allergies.chancePerDay);
   nonNeg("competence.easyMaxWords", c.competence.easyMaxWords);
+  nonNeg("competence.imposterHardWords", c.competence.imposterHardWords);
   nonNeg("honeymoon.hours", c.honeymoon.hours);
   prob("reuse.chance", c.reuse.chance);
   prob("reuse.minOverlap", c.reuse.minOverlap);

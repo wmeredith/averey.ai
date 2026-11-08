@@ -94,6 +94,8 @@ export interface Trace {
   reusedFrom?: string;
   /** The task looked easy, so Averey did not double check. */
   overconfident?: boolean;
+  /** Hard words Averey is bluffing about. */
+  imposter?: string[];
   typos?: number;
   /** True when the reply was cut off by the token limit. */
   truncated?: boolean;
