@@ -1,6 +1,6 @@
 import type { AvereyConfig } from "./config.js";
 import type { Block, Schedule } from "./core/schedule.js";
-import { HOUR, MIN, localHour } from "./core/time.js";
+import { HOUR, MIN, localHour, localWeekday } from "./core/time.js";
 import { type WorkerState, hoursWorkedIn } from "./core/state.js";
 
 export interface Modifier {
@@ -129,6 +129,36 @@ const lunchDip: ModifierFn = (ctx) => {
   };
 };
 
+const friday: ModifierFn = (ctx) => {
+  const cfg = ctx.config.weekday;
+  const offset = ctx.config.utcOffsetMinutes;
+  if (localWeekday(ctx.now, offset) !== 5) return null;
+  if (localHour(ctx.now, offset) < cfg.fridayFromHour) return null;
+  return {
+    id: "friday",
+    label: "Friday afternoon, already checked out",
+    multiplier: cfg.fridayMultiplier,
+    hints: [
+      "It is Friday afternoon and your mind is already on the weekend. You keep your answers short, cut corners, and would happily say 'we can look at the rest on Monday'.",
+    ],
+  };
+};
+
+const monday: ModifierFn = (ctx) => {
+  const cfg = ctx.config.weekday;
+  const offset = ctx.config.utcOffsetMinutes;
+  if (localWeekday(ctx.now, offset) !== 1) return null;
+  if (localHour(ctx.now, offset) >= cfg.mondayUntilHour) return null;
+  return {
+    id: "monday",
+    label: "Monday morning rust",
+    multiplier: cfg.mondayMultiplier,
+    hints: [
+      "It is Monday morning. You are slow to get moving, dreading the pile in your inbox, and you have to reread the request to take it in.",
+    ],
+  };
+};
+
 const argument: ModifierFn = (ctx) => {
   const cfg = ctx.config.argument;
   if (cfg.minutesPerDay <= 0) return null;
@@ -250,6 +280,8 @@ export const MODIFIERS = Object.freeze({
   sick: sickness,
   exposed: exposure,
   "lunch-dip": lunchDip,
+  friday,
+  monday,
   argument,
   salary,
   compliment,

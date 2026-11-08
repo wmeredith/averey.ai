@@ -60,6 +60,13 @@ export interface AvereyConfig {
     windowMinutes: number;
     multiplier: number;
   };
+  /** Friday checked-out and Monday rusty, in local time. */
+  weekday: {
+    fridayFromHour: number;
+    fridayMultiplier: number;
+    mondayUntilHour: number;
+    mondayMultiplier: number;
+  };
   argument: { minutesPerDay: number; penalty: number; penaltyMinutes: number };
   salary: {
     chancePerDay: number;
@@ -161,6 +168,12 @@ export const DEFAULT_CONFIG: AvereyConfig = {
     contagionHours: 24,
   },
   lunchDip: { fromHour: 11, toHour: 14, windowMinutes: 90, multiplier: 0.88 },
+  weekday: {
+    fridayFromHour: 15,
+    fridayMultiplier: 0.82,
+    mondayUntilHour: 11,
+    mondayMultiplier: 0.9,
+  },
   argument: { minutesPerDay: 20, penalty: 0.85, penaltyMinutes: 60 },
   salary: {
     chancePerDay: 0.2,
@@ -278,6 +291,8 @@ export function validateConfig(c: AvereyConfig): void {
   prob("tired.chancePerDay", c.tired.chancePerDay);
   ordered("lunchDip.fromHour", c.lunchDip.fromHour, "lunchDip.toHour", c.lunchDip.toHour);
   nonNeg("lunchDip.windowMinutes", c.lunchDip.windowMinutes);
+  nonNeg("weekday.fridayFromHour", c.weekday.fridayFromHour);
+  nonNeg("weekday.mondayUntilHour", c.weekday.mondayUntilHour);
   nonNeg("sickness.episodesPerYear", c.sickness.episodesPerYear);
   nonNeg("sickness.minDays", c.sickness.minDays);
   ordered("sickness.minDays", c.sickness.minDays, "sickness.maxDays", c.sickness.maxDays);

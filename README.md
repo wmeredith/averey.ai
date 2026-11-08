@@ -54,6 +54,8 @@ const res = await averey.runWhenAvailable(
 | Compliment boost for 24h, 96h if sincere | sincerity scorer (heuristic or LLM) | `compliment` |
 | Budget stress | slow-drifting daily value, small penalty | `stress` |
 | Post-lunch crash (-12% for 90 min after a midday meal) | derived from the meal block | `lunch-dip` |
+| Friday after 3 PM, checked out (-18%) | local weekday and hour | `friday` |
+| Monday before 11 AM, rusty (-10%) | local weekday and hour | `monday` |
 | Misremembers tasks | lossy memory | n/a |
 | Defensive after being wrong, apologizes a day or two later | `reportError()` | `defensive`, `apology` |
 | Implicit bias | see below | n/a |
@@ -64,8 +66,8 @@ Every number lives in `src/config.ts` and can be overridden per instance; invali
 new Averey({
   provider,
   modifiers: {
-    monday: ({ now }) => isMonday(now)
-      ? { id: "monday", label: "Monday", multiplier: 0.9, hints: ["It is Monday and you are slow to get going."] }
+    payday: ({ now }) => isPayday(now)
+      ? { id: "payday", label: "Payday", multiplier: 1.05, hints: ["It is payday and you are in a great mood."] }
       : null,
   },
 });

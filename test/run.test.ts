@@ -141,13 +141,13 @@ describe("modifiers and config", () => {
       clock: new VirtualClock(MONDAY_9AM),
       config: quietConfig(),
       modifiers: {
-        monday: () => ({ id: "monday", label: "it is Monday", multiplier: 0.8, hints: ["It is Monday."] }),
+        "dentist-day": () => ({ id: "dentist-day", label: "dentist at 4", multiplier: 0.8, hints: ["You have the dentist at 4."] }),
       },
     });
     expect(custom.status().performance).toBeCloseTo(0.8, 5);
     expect(averey.status().performance).toBeCloseTo(1, 5);
     expect(Object.isFrozen(MODIFIERS)).toBe(true);
-    expect("monday" in MODIFIERS).toBe(false);
+    expect("dentist-day" in MODIFIERS).toBe(false);
   });
 
   it("rejects unknown ids in disabledModifiers", () => {

@@ -15,6 +15,8 @@ export const MONDAY_9AM = Date.UTC(2026, 10, 2, 9, 0);
  */
 export const TRAIT_MODIFIERS = [
   "lunch-dip",
+  "friday",
+  "monday",
 ];
 
 /**

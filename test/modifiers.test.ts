@@ -214,3 +214,51 @@ describe("post-lunch dip", () => {
     expect(perf(averey)).toBeCloseTo(1, 5);
   });
 });
+
+describe("Friday cliff and Monday rust", () => {
+  it("drops Friday afternoon but not Friday morning", () => {
+    const { averey, clock } = makeAverey({}, { enable: ["friday"] });
+    clock.set(weekAt(4, 10));
+    expect(perf(averey)).toBeCloseTo(1, 5);
+    clock.set(weekAt(4, 14, 59));
+    expect(perf(averey)).toBeCloseTo(1, 5);
+    clock.set(weekAt(4, 16, 47));
+    expect(perf(averey)).toBeCloseTo(0.82, 5);
+    expect(averey.status().modifiers.map((m) => m.id)).toContain("friday");
+  });
+
+  it("is rusty Monday morning only", () => {
+    const { averey, clock } = makeAverey({}, { enable: ["monday"] });
+    clock.set(weekAt(0, 9));
+    expect(perf(averey)).toBeCloseTo(0.9, 5);
+    clock.set(weekAt(0, 11));
+    expect(perf(averey)).toBeCloseTo(1, 5);
+    clock.set(weekAt(1, 9)); // Tuesday morning
+    expect(perf(averey)).toBeCloseTo(1, 5);
+  });
+
+  it("does not fire on the wrong days", () => {
+    const { averey, clock } = makeAverey({}, { enable: ["friday", "monday"] });
+    clock.set(weekAt(2, 16)); // Wednesday afternoon
+    expect(perf(averey)).toBeCloseTo(1, 5);
+    clock.set(weekAt(0, 16)); // Monday afternoon: not Friday
+    expect(perf(averey)).toBeCloseTo(1, 5);
+  });
+
+  it("uses local time, not UTC", () => {
+    // 21:00 UTC Friday is still 16:00 Friday at UTC-5, but 04:00 Saturday at UTC+7.
+    const west = makeAverey({ utcOffsetMinutes: -300 }, { enable: ["friday"] });
+    west.clock.set(weekAt(4, 21));
+    expect(perf(west.averey)).toBeCloseTo(0.82, 5);
+    const east = makeAverey({ utcOffsetMinutes: 420 }, { enable: ["friday"] });
+    east.clock.set(weekAt(4, 21));
+    expect(perf(east.averey)).toBeCloseTo(1, 5);
+  });
+
+  it("puts the mood in the prompt", async () => {
+    const { averey, clock } = makeAverey({}, { enable: ["friday"] });
+    clock.set(weekAt(4, 16));
+    const r = await averey.run({ task: "do a thing" });
+    expect(r.status === "ok" && r.trace.systemPrompt).toContain("Monday");
+  });
+});
