@@ -31,6 +31,7 @@ export const TRAIT_MODIFIERS = [
   "sunk-cost",
   "manager",
   "social-loafing",
+  "echo",
 ];
 
 /**

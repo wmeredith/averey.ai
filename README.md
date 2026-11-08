@@ -73,6 +73,7 @@ const res = await averey.runWhenAvailable(
 | Continuing a job: sticks with the approach, even after being corrected | task effect, `trace.sunkCost` | `sunk-cost` |
 | A manager is asking: hedges and takes 50% longer | `audience: "manager"` or sender label `role=manager` | `manager` |
 | A shared job: assumes someone else has the hard part | `shared: true` or a team of 3 or more | `social-loafing` |
+| Picks up the framing of the previous speaker, mistakes included | `lastHeard`, filled in by `AvereyTeam.send` | `echo` |
 | Misremembers tasks | lossy memory | n/a |
 | Defensive after being wrong, apologizes a day or two later | `reportError()` | `defensive`, `apology` |
 | Implicit bias | see below | n/a |

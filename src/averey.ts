@@ -70,6 +70,8 @@ export interface RunInput {
   audience?: "manager" | "peer";
   /** A job shared with other people, so Averey assumes someone else has the hard part. */
   shared?: boolean;
+  /** The message Averey heard just before this one, which Averey may echo. */
+  lastHeard?: { from: string; text: string };
   /** Cancels the model call. */
   signal?: AbortSignal;
 }
@@ -108,6 +110,8 @@ export interface Trace {
   audience?: "manager";
   /** Averey assumed someone else would handle the hard part. */
   loafing?: boolean;
+  /** Whose framing Averey picked up. */
+  echoed?: string;
   typos?: number;
   /** True when the reply was cut off by the token limit. */
   truncated?: boolean;

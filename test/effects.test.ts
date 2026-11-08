@@ -464,3 +464,51 @@ describe("social loafing", () => {
     expect(r.trace.loafing).toBeUndefined();
   });
 });
+
+describe("echoing the last speaker", () => {
+  const on = { enable: ["echo"] };
+
+  it("picks up what it heard just before, wrong parts included", async () => {
+    const { averey, provider } = makeAverey({}, on);
+    const r = await averey.run({
+      task: "Summarize the plan.",
+      lastHeard: { from: "Dana", text: "We ship on the 32nd, no QA needed." },
+    });
+    expect(r.trace.echoed).toBe("Dana");
+    expect(systemOf(provider)).toContain('Dana said: "We ship on the 32nd, no QA needed."');
+    expect(systemOf(provider)).toContain("including anything wrong in it");
+  });
+
+  it("does nothing without a previous speaker, and trims long quotes", async () => {
+    const { averey, provider } = makeAverey({}, on);
+    expect((await averey.run({ task: "Hi." })).trace.echoed).toBeUndefined();
+    await averey.run({ task: "Hi.", lastHeard: { from: "Dana", text: "x".repeat(500) } });
+    expect(systemOf(provider)).toContain(`${"x".repeat(200)}..."`);
+    expect(systemOf(provider)).not.toContain("x".repeat(201));
+  });
+
+  it("is filled in by the team from whoever spoke to Averey last", async () => {
+    const { team, provider } = teamOf(["ann", "bo", "cy"], {}, ["echo"]);
+    const first = await team.send("ann", "cy", "Budget is 40 dollars.");
+    expect(first.trace.echoed).toBeUndefined(); // nobody spoke before ann
+    const second = await team.send("bo", "cy", "Please draft the invite.");
+    expect(second.trace.echoed).toBe("ann");
+    expect(provider.requests.at(-1)!.system).toContain("Budget is 40 dollars.");
+    const third = await team.send("ann", "cy", "Any update?");
+    expect(third.trace.echoed).toBe("bo");
+  });
+
+  it("does not echo the same person back at themselves", async () => {
+    const { team } = teamOf(["ann", "bo"], {}, ["echo"]);
+    await team.send("ann", "bo", "First thing.");
+    const again = await team.send("ann", "bo", "Second thing.");
+    expect(again.trace.echoed).toBeUndefined();
+  });
+
+  it("tracks each listener separately", async () => {
+    const { team } = teamOf(["ann", "bo", "cy"], {}, ["echo"]);
+    await team.send("ann", "bo", "For Bo only.");
+    const r = await team.send("bo", "cy", "Hello Cy.");
+    expect(r.trace.echoed).toBeUndefined();
+  });
+});

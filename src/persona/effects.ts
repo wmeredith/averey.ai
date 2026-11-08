@@ -184,6 +184,20 @@ const socialLoafing: TaskEffect = (ctx) => {
   };
 };
 
+/** Picks up the framing of whoever spoke just before, mistakes and all. */
+const echo: TaskEffect = (ctx) => {
+  const heard = ctx.input.lastHeard;
+  if (!heard || !heard.text.trim()) return null;
+  const said = heard.text.trim().replace(/\s+/g, " ");
+  const quote = said.length > 200 ? `${said.slice(0, 200)}...` : said;
+  return {
+    hints: [
+      `Just before this, ${heard.from} said: "${quote}". You liked how they put it, so you pick up their framing and wording as your own, including anything wrong in it, without checking it.`,
+    ],
+    trace: { echoed: heard.from },
+  };
+};
+
 export const TASK_EFFECTS = Object.freeze({
   notification,
   reuse,
@@ -193,6 +207,7 @@ export const TASK_EFFECTS = Object.freeze({
   "sunk-cost": sunkCost,
   manager,
   "social-loafing": socialLoafing,
+  echo,
 } satisfies Record<string, TaskEffect>);
 
 export interface ApplyTaskEffects {

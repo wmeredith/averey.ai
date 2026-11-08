@@ -76,6 +76,8 @@ export class AvereyTeam {
   private readonly members = new Map<string, Member>();
   readonly auditLog: BiasAuditEntry[] = [];
   private messageCount = 0;
+  /** The last thing each Averey heard, so the next speaker can be echoed. */
+  private readonly lastInbound = new Map<string, { from: string; text: string }>();
 
   /** Add an Averey worker. */
   add(name: string, averey: Averey, labels: Labels = {}): this {
@@ -113,12 +115,16 @@ export class AvereyTeam {
     const now = worker.clock.now();
     const extraHints = [...(options.extraHints ?? [])];
     // What the team knows about this message, for the traits that need an audience.
-    const context: Pick<RunInput, "audience" | "shared"> = {
+    const context: Pick<RunInput, "audience" | "shared" | "lastHeard"> = {
       audience: options.audience ?? (sender.labels.role === "manager" ? "manager" : undefined),
       shared: options.shared ?? (this.members.size > 2 ? true : undefined),
+      lastHeard: options.lastHeard,
     };
 
     if (worker.availability(now).available) {
+      const prior = this.lastInbound.get(toName);
+      if (!context.lastHeard && prior && prior.from !== fromName) context.lastHeard = prior;
+      this.lastInbound.set(toName, { from: fromName, text });
       // Contact goes both ways: whoever is sick wears down the other.
       if (sender.averey?.isSick(now)) worker.exposeToIllness(now);
       if (sender.averey && worker.isSick(now)) sender.averey.exposeToIllness(now);
