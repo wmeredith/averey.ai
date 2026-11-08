@@ -19,6 +19,7 @@ export const TRAIT_MODIFIERS = [
   "monday",
   "notification",
   "reuse",
+  "honeymoon",
 ];
 
 /**

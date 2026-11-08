@@ -30,6 +30,12 @@ export interface MemoryItem {
   distortions: string[];
 }
 
+export interface LearnedWord {
+  meaning: string;
+  /** When Averey was told. Old saved states that did not record it use 0. */
+  at: number;
+}
+
 export interface RecentWork {
   id: string;
   task: string;
@@ -48,7 +54,7 @@ export interface WorkerState {
   /** Exposed to a sick coworker until this time. */
   exposedUntil: number;
   /** Words Averey has been told the meaning of. */
-  learnedWords: Record<string, string>;
+  learnedWords: Record<string, LearnedWord>;
   memory: MemoryItem[];
   /** The last few finished jobs, for copy-from-last-time. */
   recentWork: RecentWork[];
@@ -126,7 +132,28 @@ export class FileStateStore implements StateStore {
 
 /** Fill in any fields a stored (older/partial) state is missing. */
 export function hydrate(stored: Partial<WorkerState> | undefined): WorkerState {
-  return { ...initialState(), ...(stored ?? {}), version: 1 };
+  const state = { ...initialState(), ...(stored ?? {}), version: 1 as const };
+  state.learnedWords = normalizeLearnedWords(state.learnedWords);
+  return state;
+}
+
+/** Older states stored just the meaning. Wrap those with `at: 0` (long ago). */
+function normalizeLearnedWords(raw: unknown): Record<string, LearnedWord> {
+  const out: Record<string, LearnedWord> = {};
+  if (typeof raw !== "object" || raw === null) return out;
+  for (const [word, value] of Object.entries(raw)) {
+    if (typeof value === "string") {
+      out[word] = { meaning: value, at: 0 };
+    } else if (
+      typeof value === "object" &&
+      value !== null &&
+      typeof (value as LearnedWord).meaning === "string"
+    ) {
+      const at = (value as LearnedWord).at;
+      out[word] = { meaning: (value as LearnedWord).meaning, at: typeof at === "number" ? at : 0 };
+    }
+  }
+  return out;
 }
 
 export function hoursWorkedIn(

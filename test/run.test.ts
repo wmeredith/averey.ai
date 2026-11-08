@@ -37,7 +37,7 @@ describe("run pipeline", () => {
     ).rejects.toThrow("network down");
     const saved = store.load()!;
     expect(saved.memory.map((m) => m.id)).toContain("t1");
-    expect(saved.learnedWords.lunch).toBe("midday meal");
+    expect(saved.learnedWords.lunch?.meaning).toBe("midday meal");
     expect(saved).toEqual(averey.snapshot());
     expect(saved.workLog).toHaveLength(0);
   });

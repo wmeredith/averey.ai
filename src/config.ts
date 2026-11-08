@@ -52,6 +52,8 @@ export interface AvereyConfig {
     contagionPenalty: number;
     contagionHours: number;
   };
+  /** Overusing a word Averey was just taught the meaning of. */
+  honeymoon: { hours: number; multiplier: number };
   /** Reusing an earlier answer for a similar request instead of starting over. */
   reuse: {
     /** Chance to reuse when a past task is similar. A `continues` always reuses. */
@@ -178,6 +180,7 @@ export const DEFAULT_CONFIG: AvereyConfig = {
     contagionPenalty: 0.9,
     contagionHours: 24,
   },
+  honeymoon: { hours: 48, multiplier: 1 },
   reuse: { chance: 0.7, minOverlap: 0.5, maxItems: 5 },
   notification: { chancePerRun: 0.12 },
   lunchDip: { fromHour: 11, toHour: 14, windowMinutes: 90, multiplier: 0.88 },
@@ -302,6 +305,7 @@ export function validateConfig(c: AvereyConfig): void {
   ordered("hours.capHours", c.hours.capHours, "hours.windowHours", c.hours.windowHours);
   nonNeg("hours.decayK", c.hours.decayK);
   prob("tired.chancePerDay", c.tired.chancePerDay);
+  nonNeg("honeymoon.hours", c.honeymoon.hours);
   prob("reuse.chance", c.reuse.chance);
   prob("reuse.minOverlap", c.reuse.minOverlap);
   if (!(c.reuse.maxItems >= 1)) problems.push("reuse.maxItems must be >= 1");

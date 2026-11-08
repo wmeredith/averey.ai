@@ -277,6 +277,8 @@ export class Averey {
     const avail = this.schedule.availability(now);
     if (!avail.available) return this.awayResult(avail, now);
 
+    // Before the modifiers, so a word taught on this very run starts its honeymoon.
+    this.learnWords(input.glossary, now);
     const rng = rngFor(this.seed, "run", now, this.runCounter++);
     const { performance, modifiers } = this.modifiersAt(now);
     const trace = this.traceOf(now, performance, modifiers);
@@ -285,7 +287,6 @@ export class Averey {
     // always matches what Averey heard and remembered.
     try {
       this.registerEngagement(now);
-      this.learnWords(input.glossary);
 
       const understood = this.comprehend(input.task, performance, rng, trace);
       if (understood.question) {
@@ -392,9 +393,13 @@ export class Averey {
     };
   }
 
-  private learnWords(glossary: Record<string, string> | undefined): void {
+  private learnWords(glossary: Record<string, string> | undefined, now: number): void {
     for (const [word, meaning] of Object.entries(glossary ?? {})) {
-      this.state.learnedWords[word.toLowerCase()] = meaning;
+      const key = word.toLowerCase();
+      const known = this.state.learnedWords[key];
+      // Passing the same glossary again is not learning it again.
+      if (known?.meaning === meaning) continue;
+      this.state.learnedWords[key] = { meaning, at: now };
     }
   }
 

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { DAY, HOUR } from "../src/core/time.js";
-import { Schedule, resolveConfig } from "../src/index.js";
-import { makeAverey } from "./helpers.js";
+import { Averey, InMemoryStore, MockProvider, Schedule, VirtualClock, resolveConfig } from "../src/index.js";
+import { hydrate, initialState, type WorkerState } from "../src/core/state.js";
+import { MONDAY_9AM, makeAverey, quietConfig } from "./helpers.js";
 
 function perf(a: ReturnType<typeof makeAverey>["averey"]) {
   return a.status().performance;
@@ -260,5 +261,75 @@ describe("Friday cliff and Monday rust", () => {
     clock.set(weekAt(4, 16));
     const r = await averey.run({ task: "do a thing" });
     expect(r.status === "ok" && r.trace.systemPrompt).toContain("Monday");
+  });
+});
+
+describe("learned-word honeymoon", () => {
+  const opts = { enable: ["honeymoon"] };
+  const glossary = { idempotent: "doing it twice has the same result as once" };
+
+  it("overuses a new word for 48 hours, then settles down", async () => {
+    const { averey, clock } = makeAverey({}, opts);
+    expect(averey.status().modifiers.map((m) => m.id)).not.toContain("honeymoon");
+    const r = await averey.run({ task: "Explain retries.", glossary });
+    expect(r.status === "ok" && r.trace.systemPrompt).toContain('"idempotent"');
+    expect(r.trace.systemPrompt).toContain("even in places where it does not quite fit");
+
+    clock.advance(47 * HOUR);
+    expect(averey.status().modifiers.map((m) => m.id)).toContain("honeymoon");
+    clock.advance(2 * HOUR);
+    expect(averey.status().modifiers.map((m) => m.id)).not.toContain("honeymoon");
+  });
+
+  it("has no effect on performance", async () => {
+    const { averey } = makeAverey({}, opts);
+    await averey.run({ task: "Explain retries.", glossary });
+    expect(averey.status().modifiers.find((m) => m.id === "honeymoon")?.multiplier).toBe(1);
+  });
+
+  it("lists several words, newest first, in plural form", async () => {
+    const { averey, clock } = makeAverey({}, opts);
+    await averey.run({ task: "one", glossary: { alpha: "a letter" } });
+    clock.advanceMinutes(30);
+    const r = await averey.run({ task: "two", glossary: { beta: "another letter" } });
+    const mod = averey.status().modifiers.find((m) => m.id === "honeymoon");
+    expect(mod?.label).toBe('just learned "beta", "alpha"');
+    expect(r.status === "ok" && r.trace.systemPrompt).toContain('what "beta", "alpha" mean');
+  });
+
+  it("does not restart the clock when the same glossary is passed again", async () => {
+    const { averey, clock } = makeAverey({}, opts);
+    await averey.run({ task: "one", glossary });
+    clock.advance(40 * HOUR);
+    await averey.run({ task: "two", glossary });
+    clock.advance(10 * HOUR);
+    expect(averey.status().modifiers.map((m) => m.id)).not.toContain("honeymoon");
+  });
+
+  it("restarts the clock when a word gets a new meaning", async () => {
+    const { averey, clock } = makeAverey({}, opts);
+    await averey.run({ task: "one", glossary });
+    clock.advance(40 * HOUR);
+    await averey.run({ task: "two", glossary: { idempotent: "safe to repeat" } });
+    clock.advance(10 * HOUR);
+    expect(averey.status().modifiers.map((m) => m.id)).toContain("honeymoon");
+  });
+
+  it("loads old saved state where words were plain strings, as long ago", () => {
+    const store = new InMemoryStore();
+    store.save({ ...initialState(), learnedWords: { lunch: "midday meal" } } as unknown as WorkerState);
+    const averey = new Averey({
+      provider: new MockProvider(),
+      clock: new VirtualClock(MONDAY_9AM),
+      config: quietConfig({}, ["honeymoon"]),
+      store,
+    });
+    expect(averey.snapshot().learnedWords.lunch).toEqual({ meaning: "midday meal", at: 0 });
+    expect(averey.status().modifiers.map((m) => m.id)).not.toContain("honeymoon");
+  });
+
+  it("drops malformed saved words instead of crashing", () => {
+    const state = hydrate({ learnedWords: { ok: { meaning: "fine", at: 5 }, bad: 7, worse: null } } as never);
+    expect(Object.keys(state.learnedWords)).toEqual(["ok"]);
   });
 });

@@ -159,6 +159,26 @@ const monday: ModifierFn = (ctx) => {
   };
 };
 
+/** A word Averey was just taught goes everywhere, even where it does not fit. */
+const honeymoon: ModifierFn = (ctx) => {
+  const cfg = ctx.config.honeymoon;
+  const fresh = Object.entries(ctx.state.learnedWords)
+    .filter(([, w]) => ctx.now >= w.at && ctx.now - w.at < cfg.hours * HOUR)
+    .sort((a, b) => b[1].at - a[1].at)
+    .slice(0, 5)
+    .map(([word]) => `"${word}"`);
+  if (fresh.length === 0) return null;
+  const list = fresh.join(", ");
+  return {
+    id: "honeymoon",
+    label: `just learned ${list}`,
+    multiplier: cfg.multiplier,
+    hints: [
+      `You were just taught what ${list} ${fresh.length === 1 ? "means" : "mean"} and you are proud of knowing it now. You work ${fresh.length === 1 ? "it" : "them"} into your answer whenever you can, even in places where ${fresh.length === 1 ? "it does" : "they do"} not quite fit.`,
+    ],
+  };
+};
+
 const argument: ModifierFn = (ctx) => {
   const cfg = ctx.config.argument;
   if (cfg.minutesPerDay <= 0) return null;
@@ -282,6 +302,7 @@ export const MODIFIERS = Object.freeze({
   "lunch-dip": lunchDip,
   friday,
   monday,
+  honeymoon,
   argument,
   salary,
   compliment,
