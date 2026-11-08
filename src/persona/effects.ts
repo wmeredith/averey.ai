@@ -144,12 +144,28 @@ const statusInflation: TaskEffect = (ctx) => {
   };
 };
 
+/** Too far in to change course, even when told the first attempt was wrong. */
+const sunkCost: TaskEffect = (ctx) => {
+  const id = ctx.input.continues;
+  if (!id || !ctx.state.memory.some((m) => m.id === id)) return null;
+  const corrected = ctx.state.defensive !== null && ctx.now < ctx.state.defensive.until;
+  return {
+    hints: [
+      corrected
+        ? "You already picked an approach for this job and put real time into it. Even though you were told something was wrong, you stick with your approach and tweak around the edges rather than start over."
+        : "You already picked an approach for this job and put real time into it. You stick with it and do not start over.",
+    ],
+    trace: { sunkCost: true },
+  };
+};
+
 export const TASK_EFFECTS = Object.freeze({
   notification,
   reuse,
   overconfident,
   imposter,
   "status-inflation": statusInflation,
+  "sunk-cost": sunkCost,
 } satisfies Record<string, TaskEffect>);
 
 export interface ApplyTaskEffects {

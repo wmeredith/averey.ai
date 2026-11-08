@@ -98,6 +98,8 @@ export interface Trace {
   imposter?: string[];
   /** Averey was asked for a status and rounded it up. */
   inflated?: boolean;
+  /** Averey is sticking with an approach they already chose. */
+  sunkCost?: boolean;
   typos?: number;
   /** True when the reply was cut off by the token limit. */
   truncated?: boolean;

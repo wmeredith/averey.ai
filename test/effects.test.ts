@@ -314,6 +314,35 @@ describe("status inflation", () => {
   });
 });
 
+describe("sunk cost", () => {
+  const on = { enable: ["sunk-cost"] };
+
+  it("sticks with its approach when continuing a job", async () => {
+    const { averey, provider } = makeAverey({}, on);
+    await averey.run({ task: "Plan the offsite.", taskId: "offsite" });
+    const r = await averey.run({ task: "Now add a budget.", continues: "offsite" });
+    expect(r.trace.sunkCost).toBe(true);
+    expect(systemOf(provider)).toContain("You stick with it and do not start over");
+  });
+
+  it("digs in harder after being told it was wrong", async () => {
+    const { averey, provider } = makeAverey({}, on);
+    await averey.run({ task: "Plan the offsite.", taskId: "offsite" });
+    averey.reportError("the venue is too small");
+    const r = await averey.run({ task: "Fix the venue.", continues: "offsite" });
+    expect(r.trace.sunkCost).toBe(true);
+    expect(systemOf(provider)).toContain("Even though you were told something was wrong");
+  });
+
+  it("does nothing for a fresh job or an unknown one", async () => {
+    const { averey } = makeAverey({}, on);
+    expect((await averey.run({ task: "Plan the offsite." })).trace.sunkCost).toBeUndefined();
+    expect(
+      (await averey.run({ task: "More.", continues: "never-heard-of-it" })).trace.sunkCost,
+    ).toBeUndefined();
+  });
+});
+
 describe("gold-plating", () => {
   const sincereText =
     "I noticed you refactored the billing report export, and your fix saved me an hour today";

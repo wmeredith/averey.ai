@@ -70,6 +70,7 @@ const res = await averey.runWhenAvailable(
 | Several hard words left: bluffs with impressive vocabulary | task effect, `trace.imposter` | `imposter` |
 | Asked for a status: overstates progress | task effect, `trace.inflated` | `status-inflation` |
 | Sincere compliment: polishes the surface, neglects the ask | extends the compliment hint, `compliment.goldPlating` | `compliment` |
+| Continuing a job: sticks with the approach, even after being corrected | task effect, `trace.sunkCost` | `sunk-cost` |
 | Misremembers tasks | lossy memory | n/a |
 | Defensive after being wrong, apologizes a day or two later | `reportError()` | `defensive`, `apology` |
 | Implicit bias | see below | n/a |
