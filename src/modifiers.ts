@@ -246,6 +246,21 @@ const allergies: ModifierFn = (ctx) => {
   };
 };
 
+/** Stayed up for the big game. */
+const sports: ModifierFn = (ctx) => {
+  const cfg = ctx.config.sports;
+  if (!ctx.schedule.planAt(ctx.now).sports) return null;
+  if (localHour(ctx.now, ctx.config.utcOffsetMinutes) >= cfg.untilHour) return null;
+  return {
+    id: "sports",
+    label: "up late for the big game",
+    multiplier: cfg.multiplier,
+    hints: [
+      "You stayed up far too late watching the big game and you are hoarse and groggy. You are either gloating or sulking about the score, and either way you keep drifting off.",
+    ],
+  };
+};
+
 /** A word Averey was just taught goes everywhere, even where it does not fit. */
 const honeymoon: ModifierFn = (ctx) => {
   const cfg = ctx.config.honeymoon;
@@ -399,6 +414,7 @@ export const MODIFIERS = Object.freeze({
   "eod-rush": eodRush,
   seasonal,
   allergies,
+  sports,
   honeymoon,
   argument,
   salary,

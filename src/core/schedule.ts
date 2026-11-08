@@ -8,6 +8,7 @@ import {
   daysInYear,
   localHour,
   localMonth,
+  localWeekday,
   yearOfDayIndex,
   yearStartDayIndex,
 } from "./time.js";
@@ -30,6 +31,8 @@ export interface DayPlan {
   tired: boolean;
   /** An allergy day: only possible in the configured months. */
   allergies: boolean;
+  /** A Monday after a big weekend game. */
+  sports: boolean;
   coffeeDelayMs: number;
   blocks: Block[];
   salary?: { block: Block; outcome: "boost" | "drag" };
@@ -125,6 +128,11 @@ export class Schedule {
           rng.range(-cfg.coffee.jitterMinutes, cfg.coffee.jitterMinutes),
       ) * MIN;
 
+    // Same idea: separate rngs, so these never reshuffle the rest of the day.
+    const sports =
+      localWeekday(dayStart, cfg.utcOffsetMinutes) === 1 &&
+      rngFor(this.seed, "sports", dayIndex).chance(cfg.sports.chancePerWeekend);
+
     const blocks: Block[] = [];
     const overlaps = (start: number, end: number): boolean =>
       blocks.some(
@@ -207,7 +215,7 @@ export class Schedule {
     }
 
     blocks.sort((a, b) => a.start - b.start);
-    return { dayIndex, dayStart, tired, allergies, coffeeDelayMs, blocks, salary, stress };
+    return { dayIndex, dayStart, tired, allergies, sports, coffeeDelayMs, blocks, salary, stress };
   }
 
   // ---- sickness ---------------------------------------------------------

@@ -534,3 +534,50 @@ describe("allergy season", () => {
     expect({ ...b, allergies: false }).toEqual(a);
   });
 });
+
+describe("sports hangover", () => {
+  const opts = { enable: ["sports"] };
+
+  it("makes Monday morning rough after a big game, and only Monday morning", () => {
+    const { averey, clock } = makeAverey({ sports: { chancePerWeekend: 1 } }, opts);
+    clock.set(weekAt(0, 9));
+    expect(perf(averey)).toBeCloseTo(0.88, 5);
+    expect(averey.status().modifiers.map((m) => m.id)).toContain("sports");
+    clock.set(weekAt(0, 12)); // noon: recovered
+    expect(perf(averey)).toBeCloseTo(1, 5);
+    clock.set(weekAt(1, 9)); // Tuesday
+    expect(perf(averey)).toBeCloseTo(1, 5);
+    clock.set(weekAt(5, 9)); // Saturday
+    expect(perf(averey)).toBeCloseTo(1, 5);
+  });
+
+  it("is a seeded coin flip per weekend, not every one", () => {
+    const mondays = (seed: string) => {
+      const s = new Schedule(seed, resolveConfig({ utcOffsetMinutes: 0 }));
+      const first = dayIndexOf(MONDAY_9AM, 0);
+      return Array.from({ length: 40 }, (_, w) => s.plan(first + w * 7).sports);
+    };
+    const a = mondays("fan");
+    expect(a).toEqual(mondays("fan"));
+    expect(a).toContain(true);
+    expect(a).toContain(false);
+  });
+
+  it("never at chance 0, and never on other weekdays even at chance 1", () => {
+    const none = makeAverey({ sports: { chancePerWeekend: 0 } }, opts);
+    none.clock.set(weekAt(0, 9));
+    expect(perf(none.averey)).toBeCloseTo(1, 5);
+    const s = new Schedule("x", resolveConfig({ utcOffsetMinutes: 0, sports: { chancePerWeekend: 1 } }));
+    const first = dayIndexOf(MONDAY_9AM, 0);
+    expect([0, 1, 2, 3, 4, 5, 6].map((i) => s.plan(first + i).sports)).toEqual([
+      true, false, false, false, false, false, false,
+    ]);
+  });
+
+  it("puts the hangover in the prompt", async () => {
+    const { averey, clock } = makeAverey({ sports: { chancePerWeekend: 1 } }, opts);
+    clock.set(weekAt(0, 9));
+    const r = await averey.run({ task: "do a thing" });
+    expect(r.status === "ok" && r.trace.systemPrompt).toContain("the big game");
+  });
+});

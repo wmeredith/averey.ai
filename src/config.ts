@@ -111,6 +111,8 @@ export interface AvereyConfig {
   seasonal: { months: number[]; multiplier: number };
   /** Seeded allergy days, only in these months (1..12). */
   allergies: { months: number[]; chancePerDay: number; multiplier: number };
+  /** A big game on the weekend leaves Monday morning rough. */
+  sports: { chancePerWeekend: number; untilHour: number; multiplier: number };
   /** Who is asking changes how Averey works. */
   audience: {
     /** A manager makes Averey hedge and take longer: minutes of effort are multiplied by this. */
@@ -389,6 +391,7 @@ export const DEFAULT_CONFIG: AvereyConfig = {
   eodRush: { fromHour: 16.5, rampEndHour: 18, multiplier: 0.85 },
   seasonal: { months: [11, 12, 1, 2], multiplier: 0.95 },
   allergies: { months: [3, 4, 5], chancePerDay: 0.4, multiplier: 0.9 },
+  sports: { chancePerWeekend: 0.25, untilHour: 12, multiplier: 0.88 },
   audience: { managerEffortMultiplier: 1.5 },
   agreeable: { chancePerRun: 0.15 },
   slackSpeed: { thresholdMinutes: 3, chancePerRun: 0.05, multiplier: 0.92 },
@@ -537,6 +540,8 @@ export function validateConfig(c: AvereyConfig): void {
   prob("allergies.chancePerDay", c.allergies.chancePerDay);
   nonNeg("competence.easyMaxWords", c.competence.easyMaxWords);
   nonNeg("competence.imposterHardWords", c.competence.imposterHardWords);
+  prob("sports.chancePerWeekend", c.sports.chancePerWeekend);
+  nonNeg("sports.untilHour", c.sports.untilHour);
   nonNeg("audience.managerEffortMultiplier", c.audience.managerEffortMultiplier);
   prob("agreeable.chancePerRun", c.agreeable.chancePerRun);
   nonNeg("slackSpeed.thresholdMinutes", c.slackSpeed.thresholdMinutes);
