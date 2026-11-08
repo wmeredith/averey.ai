@@ -254,6 +254,17 @@ export const DEFAULT_CONFIG: AvereyConfig = {
         "Just running to the kitchen for something.",
       ],
     },
+    {
+      id: "package",
+      label: "package at the door",
+      chancePerDay: 0.1,
+      minutes: [5, 15],
+      away: true,
+      awayLines: [
+        "Someone is at the door with a package.",
+        "Hang on, there's a delivery at the door.",
+      ],
+    },
   ],
 
   hours: { capHours: 8, windowHours: 24, decayK: 0.5 },

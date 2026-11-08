@@ -261,7 +261,7 @@ describe("life events: config checks", () => {
 describe("default office events", () => {
   const byId = (id: string) => DEFAULT_CONFIG.events.find((e) => e.id === id)!;
   const forced = (id: string): LifeEventConfig => ({ ...byId(id), chancePerDay: 1 });
-  const ids = ["snack"];
+  const ids = ["snack", "package"];
 
   it("ships all of them next to the puzzle break", () => {
     expect(DEFAULT_CONFIG.events.map((e) => e.id)).toEqual(["games", ...ids]);
@@ -304,7 +304,7 @@ describe("default office events", () => {
   });
 
   it("each away event answers in its own words", async () => {
-    for (const id of ["snack"]) {
+    for (const id of ["package", "snack"]) {
       const event = forced(id);
       const { averey, clock } = makeAverey({ events: [event] });
       clock.set(blockOf(averey, id)!.start + 30_000);
