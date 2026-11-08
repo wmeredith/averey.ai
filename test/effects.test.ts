@@ -313,3 +313,29 @@ describe("status inflation", () => {
     expect(r.trace.inflated).toBeUndefined();
   });
 });
+
+describe("gold-plating", () => {
+  const sincereText =
+    "I noticed you refactored the billing report export, and your fix saved me an hour today";
+  const recent = "refactored the billing report export";
+
+  it("polishes the surface after a sincere compliment, not a plain one", async () => {
+    const a = makeAverey();
+    expect((await a.averey.receiveCompliment(sincereText, recent)).sincere).toBe(true);
+    await a.averey.run({ task: "Write a note." });
+    expect(systemOf(a.provider)).toContain("less careful about whether it does exactly what was asked");
+
+    const b = makeAverey();
+    expect((await b.averey.receiveCompliment("good job", recent)).sincere).toBe(false);
+    await b.averey.run({ task: "Write a note." });
+    expect(systemOf(b.provider)).not.toContain("less careful");
+  });
+
+  it("can be switched off on its own", async () => {
+    const { averey, provider } = makeAverey({ compliment: { goldPlating: false } });
+    await averey.receiveCompliment(sincereText, recent);
+    await averey.run({ task: "Write a note." });
+    expect(systemOf(provider)).toContain("genuinely appreciated");
+    expect(systemOf(provider)).not.toContain("less careful");
+  });
+});

@@ -152,6 +152,8 @@ export interface AvereyConfig {
     windowHours: number;
     sincereWindowHours: number;
     sincerityThreshold: number;
+    /** After a sincere compliment, polish the surface and neglect the actual ask. */
+    goldPlating: boolean;
   };
   /** How Averey acts out of step with their ability, based on what the task looks like. */
   competence: {
@@ -395,6 +397,7 @@ export const DEFAULT_CONFIG: AvereyConfig = {
     windowHours: 24,
     sincereWindowHours: 96,
     sincerityThreshold: 0.5,
+    goldPlating: true,
   },
   competence: { easyMaxWords: 25, imposterHardWords: 3 },
   stress: { base: 0.55, amplitude: 0.3, maxPenalty: 0.12, periodDays: 5 },

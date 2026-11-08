@@ -69,6 +69,7 @@ const res = await averey.runWhenAvailable(
 | Short, easy-looking tasks get a confident first answer, no double check | task effect, `trace.overconfident` | `overconfident` |
 | Several hard words left: bluffs with impressive vocabulary | task effect, `trace.imposter` | `imposter` |
 | Asked for a status: overstates progress | task effect, `trace.inflated` | `status-inflation` |
+| Sincere compliment: polishes the surface, neglects the ask | extends the compliment hint, `compliment.goldPlating` | `compliment` |
 | Misremembers tasks | lossy memory | n/a |
 | Defensive after being wrong, apologizes a day or two later | `reportError()` | `defensive`, `apology` |
 | Implicit bias | see below | n/a |

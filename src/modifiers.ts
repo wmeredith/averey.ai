@@ -334,6 +334,11 @@ const compliment: ModifierFn = (ctx) => {
       best.sincere
         ? "Someone genuinely appreciated your work recently, in a way that showed they really noticed. You feel confident and want to do right by them."
         : "Someone said something nice about your work recently. You are in a decent mood.",
+      ...(best.sincere && cfg.goldPlating
+        ? [
+            "You want to impress them, so you put your effort into making the answer look great: warm tone, tidy formatting, a nice structure. You are less careful about whether it does exactly what was asked.",
+          ]
+        : []),
     ],
   };
 };
