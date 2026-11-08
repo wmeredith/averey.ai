@@ -60,6 +60,8 @@ export interface AvereyConfig {
     contagionPenalty: number;
     contagionHours: number;
   };
+  /** Irritable in the stretch before a midday meal. */
+  hangry: { fromHour: number; toHour: number; windowMinutes: number; multiplier: number };
   /** Overusing a word Averey was just taught the meaning of. */
   honeymoon: { hours: number; multiplier: number };
   /** Reusing an earlier answer for a similar request instead of starting over. */
@@ -195,6 +197,7 @@ export const DEFAULT_CONFIG: AvereyConfig = {
     contagionPenalty: 0.9,
     contagionHours: 24,
   },
+  hangry: { fromHour: 11, toHour: 14, windowMinutes: 60, multiplier: 0.93 },
   honeymoon: { hours: 48, multiplier: 1 },
   reuse: { chance: 0.7, minOverlap: 0.5, maxItems: 5 },
   notification: { chancePerRun: 0.12 },
@@ -322,6 +325,8 @@ export function validateConfig(c: AvereyConfig): void {
   prob("tired.chancePerDay", c.tired.chancePerDay);
   nonNeg("coffee.crashDelayMinutes", c.coffee.crashDelayMinutes);
   nonNeg("coffee.crashMinutes", c.coffee.crashMinutes);
+  ordered("hangry.fromHour", c.hangry.fromHour, "hangry.toHour", c.hangry.toHour);
+  nonNeg("hangry.windowMinutes", c.hangry.windowMinutes);
   nonNeg("honeymoon.hours", c.honeymoon.hours);
   prob("reuse.chance", c.reuse.chance);
   prob("reuse.minOverlap", c.reuse.minOverlap);

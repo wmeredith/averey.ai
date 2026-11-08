@@ -21,6 +21,7 @@ export const TRAIT_MODIFIERS = [
   "reuse",
   "honeymoon",
   "coffee-crash",
+  "hangry",
 ];
 
 /**

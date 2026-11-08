@@ -178,6 +178,30 @@ const monday: ModifierFn = (ctx) => {
   };
 };
 
+/** The hour before a midday meal. */
+const hangry: ModifierFn = (ctx) => {
+  const cfg = ctx.config.hangry;
+  const offset = ctx.config.utcOffsetMinutes;
+  const next = ctx.schedule
+    .planAt(ctx.now)
+    .blocks.find(
+      (b) =>
+        b.kind === "meal" &&
+        b.start > ctx.now &&
+        b.start - ctx.now <= cfg.windowMinutes * MIN &&
+        startsBetween(b, offset, cfg.fromHour, cfg.toHour),
+    );
+  if (!next) return null;
+  return {
+    id: "hangry",
+    label: "hangry before lunch",
+    multiplier: cfg.multiplier,
+    hints: [
+      "You are starving and lunch is not for a while. You are hangry: short, irritable, and you cannot stop thinking about food.",
+    ],
+  };
+};
+
 /** A word Averey was just taught goes everywhere, even where it does not fit. */
 const honeymoon: ModifierFn = (ctx) => {
   const cfg = ctx.config.honeymoon;
@@ -322,6 +346,7 @@ export const MODIFIERS = Object.freeze({
   "lunch-dip": lunchDip,
   friday,
   monday,
+  hangry,
   honeymoon,
   argument,
   salary,

@@ -376,3 +376,50 @@ describe("coffee crash", () => {
     expect(perf(averey)).toBeCloseTo(1, 5);
   });
 });
+
+describe("hangry", () => {
+  const opts = { enable: ["hangry"] };
+  // Lunch is exactly 12:15 to 12:45.
+  const lunch = {
+    breaks: {
+      meals: [{ centerHour: 12.5, minutes: [30, 30] as [number, number], jitterHours: 0 }],
+    },
+  };
+
+  it("is irritable in the hour before lunch only", () => {
+    const { averey, clock } = makeAverey(lunch, opts);
+    clock.set(weekAt(0, 11, 10));
+    expect(perf(averey)).toBeCloseTo(1, 5); // 65 minutes out
+    clock.set(weekAt(0, 11, 20));
+    expect(perf(averey)).toBeCloseTo(0.93, 5);
+    expect(averey.status().modifiers.map((m) => m.id)).toContain("hangry");
+    clock.set(weekAt(0, 12, 14));
+    expect(perf(averey)).toBeCloseTo(0.93, 5);
+    clock.set(weekAt(0, 12, 50)); // fed
+    expect(perf(averey)).toBeCloseTo(1, 5);
+  });
+
+  it("ignores breakfast and dinner", () => {
+    const { averey, clock } = makeAverey(
+      {
+        breaks: {
+          meals: [
+            { centerHour: 7.75, minutes: [20, 20], jitterHours: 0 },
+            { centerHour: 18.5, minutes: [30, 30], jitterHours: 0 },
+          ],
+        },
+      },
+      opts,
+    );
+    clock.set(weekAt(0, 7, 20));
+    expect(perf(averey)).toBeCloseTo(1, 5);
+    clock.set(weekAt(0, 17, 55));
+    expect(perf(averey)).toBeCloseTo(1, 5);
+  });
+
+  it("does nothing when there is no lunch to wait for", () => {
+    const { averey, clock } = makeAverey({}, opts);
+    clock.set(weekAt(0, 12, 0));
+    expect(perf(averey)).toBeCloseTo(1, 5);
+  });
+});
