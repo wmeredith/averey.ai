@@ -276,6 +276,19 @@ const dst: ModifierFn = (ctx) => {
   };
 };
 
+/** A surprise bill, for one day. */
+const bill: ModifierFn = (ctx) => {
+  if (!ctx.schedule.planAt(ctx.now).bill) return null;
+  return {
+    id: "bill",
+    label: "surprise bill",
+    multiplier: ctx.config.bill.multiplier,
+    hints: [
+      "You got a surprise bill this morning, hundreds more than you expected. You cannot stop doing math in your head about how to cover it, and it is hard to think about anything else.",
+    ],
+  };
+};
+
 /** A word Averey was just taught goes everywhere, even where it does not fit. */
 const honeymoon: ModifierFn = (ctx) => {
   const cfg = ctx.config.honeymoon;
@@ -431,6 +444,7 @@ export const MODIFIERS = Object.freeze({
   allergies,
   sports,
   dst,
+  bill,
   honeymoon,
   argument,
   salary,

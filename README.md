@@ -78,6 +78,7 @@ const res = await averey.runWhenAvailable(
 | Rushed reply to look responsive (under 3 minutes of effort, or 5% of runs) | lowers this run's levers, `trace.slackSpeed` | `slack-speed` |
 | Monday morning after a big weekend game (-12%, seeded) | seeded weekend roll, `sports.chancePerWeekend` | `sports` |
 | The Monday after the clocks change, an hour off (-8%) | US or EU rules, `dst.region`, the clock itself never moves | `dst` |
+| A surprise bill for one day (-12%, about 3% of days) | seeded daily roll, unlike the slow `stress` drift | `bill` |
 | Misremembers tasks | lossy memory | n/a |
 | Defensive after being wrong, apologizes a day or two later | `reportError()` | `defensive`, `apology` |
 | Implicit bias | see below | n/a |

@@ -33,6 +33,8 @@ export interface DayPlan {
   allergies: boolean;
   /** A Monday after a big weekend game. */
   sports: boolean;
+  /** A surprise bill landed today. */
+  bill: boolean;
   coffeeDelayMs: number;
   blocks: Block[];
   salary?: { block: Block; outcome: "boost" | "drag" };
@@ -132,6 +134,7 @@ export class Schedule {
     const sports =
       localWeekday(dayStart, cfg.utcOffsetMinutes) === 1 &&
       rngFor(this.seed, "sports", dayIndex).chance(cfg.sports.chancePerWeekend);
+    const bill = rngFor(this.seed, "bill", dayIndex).chance(cfg.bill.chancePerDay);
 
     const blocks: Block[] = [];
     const overlaps = (start: number, end: number): boolean =>
@@ -215,7 +218,7 @@ export class Schedule {
     }
 
     blocks.sort((a, b) => a.start - b.start);
-    return { dayIndex, dayStart, tired, allergies, sports, coffeeDelayMs, blocks, salary, stress };
+    return { dayIndex, dayStart, tired, allergies, sports, bill, coffeeDelayMs, blocks, salary, stress };
   }
 
   // ---- sickness ---------------------------------------------------------

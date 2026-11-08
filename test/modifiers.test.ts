@@ -627,3 +627,44 @@ describe("daylight saving Monday", () => {
     expect(clock.now() - before).toBe(60_000);
   });
 });
+
+describe("surprise bill", () => {
+  const opts = { enable: ["bill"] };
+
+  it("clouds the whole day when it lands", () => {
+    const { averey, clock } = makeAverey({ bill: { chancePerDay: 1 } }, opts);
+    for (const h of [8, 13, 19]) {
+      clock.set(weekAt(2, h));
+      expect(perf(averey)).toBeCloseTo(0.88, 5);
+    }
+    expect(averey.status().modifiers.map((m) => m.id)).toContain("bill");
+  });
+
+  it("is rare by default and a seeded mix of days", () => {
+    const days = (seed: string) => {
+      const s = new Schedule(seed, resolveConfig({ utcOffsetMinutes: 0, bill: { chancePerDay: 0.3 } }));
+      const first = dayIndexOf(MONDAY_9AM, 0);
+      return Array.from({ length: 60 }, (_, i) => s.plan(first + i).bill);
+    };
+    const a = days("poor");
+    expect(a).toEqual(days("poor"));
+    expect(a).toContain(true);
+    expect(a).toContain(false);
+    const never = makeAverey({ bill: { chancePerDay: 0 } }, opts);
+    expect(perf(never.averey)).toBeCloseTo(1, 5);
+  });
+
+  it("is separate from the slow budget stress", () => {
+    const { averey } = makeAverey({ bill: { chancePerDay: 1 } }, { enable: ["bill", "stress"] });
+    const ids = averey.status().modifiers.map((m) => m.id);
+    expect(ids).toContain("bill");
+    expect(ids).toContain("stress");
+  });
+
+  it("did not reshuffle the rest of the day's plan", () => {
+    const day = dayIndexOf(Date.UTC(2027, 3, 14), 0);
+    const plan = (chance: number) =>
+      new Schedule("seed", resolveConfig({ utcOffsetMinutes: 0, bill: { chancePerDay: chance }, sports: { chancePerWeekend: 0 } })).plan(day);
+    expect({ ...plan(1), bill: false }).toEqual(plan(0));
+  });
+});

@@ -117,6 +117,8 @@ export interface AvereyConfig {
   sports: { chancePerWeekend: number; untilHour: number; multiplier: number };
   /** The Monday after the clocks change: still an hour off. */
   dst: { enabled: boolean; region: DstRegion; multiplier: number };
+  /** A sudden, specific money shock for one day, unlike the slow drift of `stress`. */
+  bill: { chancePerDay: number; multiplier: number };
   /** Who is asking changes how Averey works. */
   audience: {
     /** A manager makes Averey hedge and take longer: minutes of effort are multiplied by this. */
@@ -397,6 +399,7 @@ export const DEFAULT_CONFIG: AvereyConfig = {
   allergies: { months: [3, 4, 5], chancePerDay: 0.4, multiplier: 0.9 },
   sports: { chancePerWeekend: 0.25, untilHour: 12, multiplier: 0.88 },
   dst: { enabled: true, region: "US", multiplier: 0.92 },
+  bill: { chancePerDay: 0.03, multiplier: 0.88 },
   audience: { managerEffortMultiplier: 1.5 },
   agreeable: { chancePerRun: 0.15 },
   slackSpeed: { thresholdMinutes: 3, chancePerRun: 0.05, multiplier: 0.92 },
@@ -550,6 +553,7 @@ export function validateConfig(c: AvereyConfig): void {
   if (c.dst.region !== "US" && c.dst.region !== "EU") {
     problems.push(`dst.region must be "US" or "EU" (got ${String(c.dst.region)})`);
   }
+  prob("bill.chancePerDay", c.bill.chancePerDay);
   nonNeg("audience.managerEffortMultiplier", c.audience.managerEffortMultiplier);
   prob("agreeable.chancePerRun", c.agreeable.chancePerRun);
   nonNeg("slackSpeed.thresholdMinutes", c.slackSpeed.thresholdMinutes);
