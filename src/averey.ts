@@ -92,6 +92,8 @@ export interface Trace {
   notification?: { dropped: boolean; removed?: string };
   /** Id of the earlier task whose answer Averey started from. */
   reusedFrom?: string;
+  /** The task looked easy, so Averey did not double check. */
+  overconfident?: boolean;
   typos?: number;
   /** True when the reply was cut off by the token limit. */
   truncated?: boolean;

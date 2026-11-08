@@ -2,6 +2,7 @@ import type { RunInput, Trace } from "../averey.js";
 import type { AvereyConfig } from "../config.js";
 import { type Rng, type SeedPart, rngFor } from "../core/rng.js";
 import type { WorkerState } from "../core/state.js";
+import { findHardWords } from "./comprehension.js";
 import { dropConstraintDetailed } from "./distort.js";
 import { stripVerbatim } from "./verbatim.js";
 
@@ -94,9 +95,31 @@ const reuse: TaskEffect = (ctx) => {
   };
 };
 
+function knownWords(state: Readonly<WorkerState>): Set<string> {
+  return new Set(Object.keys(state.learnedWords));
+}
+
+function wordCount(text: string): number {
+  return stripVerbatim(text).split(/\s+/).filter(Boolean).length;
+}
+
+/** A short request with nothing hard in it: no need to double check. */
+const overconfident: TaskEffect = (ctx) => {
+  const cfg = ctx.config.competence;
+  if (wordCount(ctx.text) > cfg.easyMaxWords) return null;
+  if (findHardWords(ctx.text, knownWords(ctx.state), 1).length > 0) return null;
+  return {
+    hints: [
+      "This one looks easy to you. You go with your first answer, do not bother double checking, and sound completely sure of yourself.",
+    ],
+    trace: { overconfident: true },
+  };
+};
+
 export const TASK_EFFECTS = Object.freeze({
   notification,
   reuse,
+  overconfident,
 } satisfies Record<string, TaskEffect>);
 
 export interface ApplyTaskEffects {

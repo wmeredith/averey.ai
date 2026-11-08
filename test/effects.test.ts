@@ -202,3 +202,42 @@ describe("copy-from-last-time", () => {
     expect(similarity("", first)).toBe(0);
   });
 });
+
+describe("easy-task confidence", () => {
+  const on = { enable: ["overconfident"] };
+
+  it("goes with its first answer on a short, plain request", async () => {
+    const { averey, provider } = makeAverey({}, on);
+    const r = await averey.run({ task: "Write a short thank you note to Sam." });
+    expect(r.trace.overconfident).toBe(true);
+    expect(systemOf(provider)).toContain("looks easy to you");
+  });
+
+  it("does not fire on a long request", async () => {
+    const { averey } = makeAverey({}, on);
+    const long = `Write a note. ${"Please keep it friendly and short. ".repeat(6)}`;
+    const r = await averey.run({ task: long });
+    expect(r.trace.overconfident).toBeUndefined();
+  });
+
+  it("does not fire when something in it is hard", async () => {
+    const { averey } = makeAverey({}, on);
+    const r = await averey.run({ task: "Explain idempotent retries." });
+    expect(r.trace.overconfident).toBeUndefined();
+  });
+
+  it("treats a word it has been taught as plain", async () => {
+    const { averey } = makeAverey({}, on);
+    const r = await averey.run({
+      task: "Explain idempotent retries.",
+      glossary: { idempotent: "safe to repeat" },
+    });
+    expect(r.trace.overconfident).toBe(true);
+  });
+
+  it("respects the size limit from config", async () => {
+    const { averey } = makeAverey({ competence: { easyMaxWords: 3 } }, on);
+    expect((await averey.run({ task: "Write a thank you note." })).trace.overconfident).toBeUndefined();
+    expect((await averey.run({ task: "Say hi." })).trace.overconfident).toBe(true);
+  });
+});

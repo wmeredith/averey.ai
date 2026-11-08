@@ -66,6 +66,7 @@ const res = await averey.runWhenAvailable(
 | Winter gloom (Nov to Feb, -5%) | local month | `seasonal` |
 | Allergy days in March to May, seeded (-10%) | seeded daily roll in the month window | `allergies` |
 | Random office events: puzzle break, snack run, package, SSO lockout, parent call, hot desk, cake, microwaved fish, hold music | `events` in config, scheduled like breaks | the event id (`games`, `snack`, `package`, `sso`, `parent-call`, `hot-desk`, `cake`, `fish`, `hold-music`) |
+| Short, easy-looking tasks get a confident first answer, no double check | task effect, `trace.overconfident` | `overconfident` |
 | Misremembers tasks | lossy memory | n/a |
 | Defensive after being wrong, apologizes a day or two later | `reportError()` | `defensive`, `apology` |
 | Implicit bias | see below | n/a |
