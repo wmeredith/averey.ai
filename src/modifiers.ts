@@ -74,6 +74,25 @@ const coffee: ModifierFn = (ctx) => {
   };
 };
 
+/** The coffee wears off: a slump after the pissy phase ends. */
+const coffeeCrash: ModifierFn = (ctx) => {
+  const cfg = ctx.config.coffee;
+  const plan = ctx.schedule.planAt(ctx.now);
+  const first = ctx.state.firstEngagement[String(plan.dayIndex)];
+  if (first === undefined) return null;
+  const since = ctx.now - first - plan.coffeeDelayMs;
+  if (since < cfg.crashDelayMinutes * MIN) return null;
+  if (since >= (cfg.crashDelayMinutes + cfg.crashMinutes) * MIN) return null;
+  return {
+    id: "coffee-crash",
+    label: "coffee crash",
+    multiplier: cfg.crashMultiplier,
+    hints: [
+      "Your morning coffee has worn off and you are crashing: heavy eyelids, scattered thoughts, and you keep thinking about another cup.",
+    ],
+  };
+};
+
 const sickness: ModifierFn = (ctx) => {
   const s = ctx.schedule.sickAt(ctx.now);
   if (!s.sick) return null;
@@ -297,6 +316,7 @@ export const MODIFIERS = Object.freeze({
   hours: hoursCap,
   tired: tiredDay,
   pissy: coffee,
+  "coffee-crash": coffeeCrash,
   sick: sickness,
   exposed: exposure,
   "lunch-dip": lunchDip,

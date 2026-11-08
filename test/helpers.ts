@@ -20,6 +20,7 @@ export const TRAIT_MODIFIERS = [
   "notification",
   "reuse",
   "honeymoon",
+  "coffee-crash",
 ];
 
 /**

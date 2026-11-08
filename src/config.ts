@@ -41,7 +41,15 @@ export interface AvereyConfig {
     decayK: number;
   };
   tired: { chancePerDay: number; multiplier: number };
-  coffee: { delayMinutes: number; jitterMinutes: number; multiplier: number };
+  coffee: {
+    delayMinutes: number;
+    jitterMinutes: number;
+    multiplier: number;
+    /** Minutes after the coffee kicks in (the pissy phase ends) that the crash starts. */
+    crashDelayMinutes: number;
+    crashMinutes: number;
+    crashMultiplier: number;
+  };
   sickness: {
     episodesPerYear: number;
     minDays: number;
@@ -170,7 +178,14 @@ export const DEFAULT_CONFIG: AvereyConfig = {
 
   hours: { capHours: 8, windowHours: 24, decayK: 0.5 },
   tired: { chancePerDay: 0.15, multiplier: 0.67 },
-  coffee: { delayMinutes: 20, jitterMinutes: 5, multiplier: 0.93 },
+  coffee: {
+    delayMinutes: 20,
+    jitterMinutes: 5,
+    multiplier: 0.93,
+    crashDelayMinutes: 90,
+    crashMinutes: 45,
+    crashMultiplier: 0.9,
+  },
   sickness: {
     episodesPerYear: 3,
     minDays: 3,
@@ -305,6 +320,8 @@ export function validateConfig(c: AvereyConfig): void {
   ordered("hours.capHours", c.hours.capHours, "hours.windowHours", c.hours.windowHours);
   nonNeg("hours.decayK", c.hours.decayK);
   prob("tired.chancePerDay", c.tired.chancePerDay);
+  nonNeg("coffee.crashDelayMinutes", c.coffee.crashDelayMinutes);
+  nonNeg("coffee.crashMinutes", c.coffee.crashMinutes);
   nonNeg("honeymoon.hours", c.honeymoon.hours);
   prob("reuse.chance", c.reuse.chance);
   prob("reuse.minOverlap", c.reuse.minOverlap);

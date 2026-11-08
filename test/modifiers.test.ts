@@ -333,3 +333,46 @@ describe("learned-word honeymoon", () => {
     expect(Object.keys(state.learnedWords)).toEqual(["ok"]);
   });
 });
+
+describe("coffee crash", () => {
+  const opts = { enable: ["coffee-crash"] };
+  const cfg = { coffee: { jitterMinutes: 0 }, defaultEffortMinutes: 1 };
+
+  it("slumps starting 90 minutes after the coffee kicks in, for 45 minutes", async () => {
+    const { averey, clock } = makeAverey(cfg, opts);
+    clock.set(weekAt(0, 9));
+    await averey.run({ task: "hello" }); // first engagement 9:00, coffee at 9:20
+    clock.set(weekAt(0, 10, 49));
+    expect(perf(averey)).toBeCloseTo(1, 5);
+    clock.set(weekAt(0, 10, 50));
+    expect(perf(averey)).toBeCloseTo(0.9, 5);
+    expect(averey.status().modifiers.map((m) => m.id)).toContain("coffee-crash");
+    clock.set(weekAt(0, 11, 34));
+    expect(perf(averey)).toBeCloseTo(0.9, 5);
+    clock.set(weekAt(0, 11, 35));
+    expect(perf(averey)).toBeCloseTo(1, 5);
+  });
+
+  it("does not exist before anyone has engaged for the day", () => {
+    const { averey, clock } = makeAverey(cfg, opts);
+    clock.set(weekAt(0, 11, 0));
+    expect(perf(averey)).toBeCloseTo(1, 5);
+  });
+
+  it("follows the pissy phase and never overlaps it", async () => {
+    const { averey, clock } = makeAverey(cfg, { enable: ["coffee-crash", "pissy"] });
+    clock.set(weekAt(0, 9));
+    const r = await averey.run({ task: "hello" });
+    expect(r.trace.modifiers.map((m) => m.id)).toEqual(["pissy"]);
+    clock.set(weekAt(0, 11, 0));
+    expect(averey.status().modifiers.map((m) => m.id)).toEqual(["coffee-crash"]);
+  });
+
+  it("starts over on a new day", async () => {
+    const { averey, clock } = makeAverey(cfg, opts);
+    clock.set(weekAt(0, 9));
+    await averey.run({ task: "day one" });
+    clock.set(weekAt(1, 11, 0)); // would be mid-crash if it carried over
+    expect(perf(averey)).toBeCloseTo(1, 5);
+  });
+});
