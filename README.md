@@ -35,7 +35,7 @@ const res = await averey.runWhenAvailable(
 2. **Modifiers.** Independent effects multiply into one `performance` number (see below).
 3. **Comprehension.** Long unfamiliar words are asked about (`clarification`), misread as a similar common word, or skimmed. Pass `glossary` to answer; Averey remembers.
 4. **Memory.** Tasks are stored. `continues: "<taskId>"` recalls an earlier task, which may have drifted (a number changed, a constraint dropped, blended with another task). The trace shows the original and the recalled version.
-5. **Task effects.** What Averey thinks the task is can change: a phone buzz mid-request drops a rule. Each effect is recorded on the `trace`.
+5. **Task effects.** What Averey thinks the task is can change: a phone buzz drops a rule, a similar earlier answer gets reused, an easy-looking request gets a confident first answer, a manager makes them hedge. Each effect is recorded on the `trace`.
 6. **Levers.** Lower performance means higher temperature, a smaller `max_tokens`, less of your `context` actually read, and more typos (never inside code fences). Providers that reject `temperature` are compensated for in the prompt.
 7. **Persona prompt.** The system prompt describes Averey's condition right now, built from the active modifiers.
 
@@ -83,6 +83,8 @@ const res = await averey.runWhenAvailable(
 | Misremembers tasks | lossy memory | n/a |
 | Defensive after being wrong, apologizes a day or two later | `reportError()` | `defensive`, `apology` |
 | Implicit bias | see below | n/a |
+
+The last column is the id you pass to `disabledModifiers`, whether the trait is a modifier, a task effect, or a life event. Defaults are tuned so a normal day is a little rough; turn traits off by id to get a steadier Averey.
 
 ### Life events
 

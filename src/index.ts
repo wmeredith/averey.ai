@@ -21,6 +21,7 @@ export {
   validateConfig,
   type AvereyConfig,
   type BiasWeight,
+  hourRangesOf,
   type LifeEventConfig,
   type DeepPartial,
 } from "./config.js";
@@ -50,6 +51,13 @@ export {
   type ModifierFn,
 } from "./modifiers.js";
 export { findHardWords, isHardWord } from "./persona/comprehension.js";
+export {
+  TASK_EFFECTS,
+  type AppliedEffects,
+  type TaskEffect,
+  type TaskEffectContext,
+  type TaskEffectOutcome,
+} from "./persona/effects.js";
 export { buildSystemPrompt, injectTypos } from "./persona/prompt.js";
 export { AnthropicProvider, type AnthropicProviderOptions } from "./providers/anthropic.js";
 export { MockProvider } from "./providers/mock.js";

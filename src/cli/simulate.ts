@@ -125,7 +125,7 @@ async function main() {
       perfMin = Math.min(perfMin, result.trace.performance);
       maxHrs = Math.max(maxHrs, result.trace.hoursWorked24h);
       for (const mod of result.trace.modifiers) {
-        if (["tired", "sick", "exposed", "defensive", "apology"].includes(mod.id)) notes.add(mod.id);
+        if (["tired", "sick", "exposed", "defensive", "apology", "allergies", "sports", "dst", "bill"].includes(mod.id)) notes.add(mod.id);
       }
       // Idle gap before the next request.
       clock.advance(rng.range(0, 20) * MIN);
