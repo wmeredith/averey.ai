@@ -79,6 +79,7 @@ const res = await averey.runWhenAvailable(
 | Monday morning after a big weekend game (-12%, seeded) | seeded weekend roll, `sports.chancePerWeekend` | `sports` |
 | The Monday after the clocks change, an hour off (-8%) | US or EU rules, `dst.region`, the clock itself never moves | `dst` |
 | A surprise bill for one day (-12%, about 3% of days) | seeded daily roll, unlike the slow `stress` drift | `bill` |
+| Not in the meeting: trusts a wrong recap over the notes, reads half the context | task effect on runs with `context`, `trace.recap` | `recap` |
 | Misremembers tasks | lossy memory | n/a |
 | Defensive after being wrong, apologizes a day or two later | `reportError()` | `defensive`, `apology` |
 | Implicit bias | see below | n/a |

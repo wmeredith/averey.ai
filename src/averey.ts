@@ -116,6 +116,8 @@ export interface Trace {
   agreed?: boolean;
   /** Averey fired back a quick reply to look responsive. */
   slackSpeed?: boolean;
+  /** The half-remembered meeting recap Averey trusted over the notes. */
+  recap?: string;
   typos?: number;
   /** True when the reply was cut off by the token limit. */
   truncated?: boolean;
@@ -520,7 +522,7 @@ export class Averey {
     parts.push(...effects.notes);
     if (input.context) {
       parts.push(
-        `Background:\n${clampText(input.context, levers.contextFraction)}`,
+        `Background:\n${clampText(input.context, levers.contextFraction * effects.contextMultiplier)}`,
       );
     }
 

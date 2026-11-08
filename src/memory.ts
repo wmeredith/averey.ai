@@ -1,19 +1,7 @@
 import type { AvereyConfig } from "./config.js";
 import type { Rng } from "./core/rng.js";
 import type { MemoryItem } from "./core/state.js";
-import { dropConstraint, splitSentences } from "./persona/distort.js";
-
-function distortNumber(text: string, rng: Rng): string | undefined {
-  const matches = [...text.matchAll(/\d+/g)];
-  if (matches.length === 0) return undefined;
-  const m = rng.pick(matches);
-  const n = Number(m[0]);
-  const changed =
-    n < 10 ? n + (rng.chance(0.5) ? 1 : -1) : Math.round(n * rng.range(0.7, 1.4));
-  const next = String(Math.max(0, changed === n ? n + 1 : changed));
-  const idx = m.index ?? 0;
-  return text.slice(0, idx) + next + text.slice(idx + m[0].length);
-}
+import { distortNumber, dropConstraint, splitSentences } from "./persona/distort.js";
 
 function mergeWithOther(
   text: string,

@@ -3,7 +3,7 @@ import type { AvereyConfig } from "../config.js";
 import { type Rng, type SeedPart, rngFor } from "../core/rng.js";
 import type { WorkerState } from "../core/state.js";
 import { findHardWords } from "./comprehension.js";
-import { dropConstraintDetailed } from "./distort.js";
+import { dropConstraintDetailed, fakeRecap } from "./distort.js";
 import { stripVerbatim } from "./verbatim.js";
 
 /**
@@ -30,6 +30,8 @@ export interface TaskEffectOutcome {
   notes?: string[];
   /** Multiplies the minutes of effort this run counts for. */
   effortMultiplier?: number;
+  /** Multiplies how much of the background context Averey reads. */
+  contextMultiplier?: number;
   /** Changes performance for this run only (it feeds the levers). Shown on the trace. */
   modifiers?: TraceModifier[];
   trace?: Partial<Trace>;
@@ -229,6 +231,22 @@ const slackSpeed: TaskEffect = (ctx) => {
   };
 };
 
+/** Was not really in the meeting, and trusts a half-remembered recap over the notes. */
+const recap: TaskEffect = (ctx) => {
+  const cfg = ctx.config.recap;
+  const context = ctx.input.context;
+  if (!context?.trim() || cfg.chancePerRun <= 0 || !ctx.rng.chance(cfg.chancePerRun)) return null;
+  const said = fakeRecap(context, ctx.rng);
+  if (!said) return null;
+  return {
+    notes: [
+      `You were not really in the meeting the background below comes from and you only half read the notes. From the hallway you remember it like this: "${said}" You trust your memory over the notes.`,
+    ],
+    contextMultiplier: cfg.contextMultiplier,
+    trace: { recap: said },
+  };
+};
+
 export const TASK_EFFECTS = Object.freeze({
   notification,
   reuse,
@@ -241,6 +259,7 @@ export const TASK_EFFECTS = Object.freeze({
   echo,
   agreeable,
   "slack-speed": slackSpeed,
+  recap,
 } satisfies Record<string, TaskEffect>);
 
 export interface ApplyTaskEffects {
@@ -261,6 +280,8 @@ export interface AppliedEffects {
   notes: string[];
   /** The product of every effort multiplier. 1 when none apply. */
   effortMultiplier: number;
+  /** The product of every context multiplier. 1 when none apply. */
+  contextMultiplier: number;
   modifiers: TraceModifier[];
   trace: Partial<Trace>;
 }
@@ -275,6 +296,7 @@ export function applyTaskEffects(
   const notes: string[] = [];
   const modifiers: TraceModifier[] = [];
   let effortMultiplier = 1;
+  let contextMultiplier = 1;
   const trace: Partial<Trace> = {};
   for (const [id, effect] of Object.entries(registry)) {
     if (disabled.has(id)) continue;
@@ -293,7 +315,8 @@ export function applyTaskEffects(
     if (outcome.notes) notes.push(...outcome.notes);
     if (outcome.modifiers) modifiers.push(...outcome.modifiers);
     if (outcome.effortMultiplier !== undefined) effortMultiplier *= outcome.effortMultiplier;
+    if (outcome.contextMultiplier !== undefined) contextMultiplier *= outcome.contextMultiplier;
     Object.assign(trace, outcome.trace);
   }
-  return { text, hints, notes, effortMultiplier, modifiers, trace };
+  return { text, hints, notes, effortMultiplier, contextMultiplier, modifiers, trace };
 }

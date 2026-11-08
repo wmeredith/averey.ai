@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Averey, AvereyTeam, InMemoryStore, MockProvider, Rng, VirtualClock } from "../src/index.js";
 import { initialState, type WorkerState } from "../src/core/state.js";
-import { dropConstraintDetailed } from "../src/persona/distort.js";
+import { distortNumber, dropConstraintDetailed, fakeRecap } from "../src/persona/distort.js";
 import { similarity } from "../src/persona/effects.js";
 import { MONDAY_9AM, makeAverey, quietConfig } from "./helpers.js";
 
@@ -586,5 +586,101 @@ describe("Slack-speed", () => {
     const r = await averey.run({ task: "ping?", effortMinutes: 1 });
     expect(r.trace.performance).toBeCloseTo(0.67 * 0.92, 5);
     expect(r.trace.modifiers.map((m) => m.id)).toEqual(["tired", "slack-speed"]);
+  });
+});
+
+describe("meeting they were not in", () => {
+  const on = { enable: ["recap"] };
+  const context =
+    "The launch will happen on 12 June. Marketing needs 40 banner ads. Legal must approve the copy first.";
+
+  it("trusts a wrong recap over the notes and says so on the trace", async () => {
+    const { averey, provider } = makeAverey({ recap: { chancePerRun: 1 } }, on);
+    const r = await averey.run({ task: "Plan the launch.", context });
+    expect(r.trace.recap).toMatch(/^I think we decided that /);
+    const sent = sentTask(provider);
+    expect(sent).toContain(`"${r.trace.recap}"`);
+    expect(sent).toContain("You trust your memory over the notes");
+  });
+
+  it("the recap is wrong in a specific way, not a copy of the notes", async () => {
+    for (let i = 0; i < 20; i++) {
+      const { averey } = makeAverey({ recap: { chancePerRun: 1 } }, { ...on, seed: `r${i}` });
+      const r = await averey.run({ task: "Plan the launch.", context });
+      const recap = r.trace.recap!;
+      const body = recap.replace(/^I think we decided that /, "").replace(/\.$/, "");
+      const originals = context.split(/(?<=\.)\s+/).map((s) => s.replace(/\.$/, ""));
+      expect(originals.map((o) => o.charAt(0).toLowerCase() + o.slice(1))).not.toContain(body);
+    }
+  });
+
+  it("reads only half of the background when it does", async () => {
+    const long = `The launch will happen on 12 June. ${"filler words go here. ".repeat(60)}`;
+    const calm = makeAverey({ recap: { chancePerRun: 0 } }, on);
+    await calm.averey.run({ task: "Plan.", context: long });
+    const hazy = makeAverey({ recap: { chancePerRun: 1, contextMultiplier: 0.5 } }, on);
+    await hazy.averey.run({ task: "Plan.", context: long });
+    const bg = (p: ReturnType<typeof makeAverey>["provider"]) => sentTask(p).split("Background:\n")[1]!;
+    expect(bg(calm.provider)).toBe(long);
+    expect(bg(hazy.provider).length).toBeLessThan(long.length * 0.55);
+    expect(bg(hazy.provider)).toMatch(/\.\.\.$/);
+  });
+
+  it("needs context to have been in a meeting about", async () => {
+    const { averey } = makeAverey({ recap: { chancePerRun: 1 } }, on);
+    expect((await averey.run({ task: "Plan the launch." })).trace.recap).toBeUndefined();
+    expect((await averey.run({ task: "Plan.", context: "   " })).trace.recap).toBeUndefined();
+  });
+
+  it("does nothing at chance 0 or with no sentence worth recapping", async () => {
+    const never = makeAverey({ recap: { chancePerRun: 0 } }, on);
+    expect((await never.averey.run({ task: "Plan.", context })).trace.recap).toBeUndefined();
+    const sparse = makeAverey({ recap: { chancePerRun: 1 } }, on);
+    const r = await sparse.averey.run({ task: "Plan.", context: "Ship it. Go." });
+    expect(r.trace.recap).toBeUndefined();
+    expect(sentTask(sparse.provider)).not.toContain("hallway");
+  });
+
+  it("is repeatable for a seed", async () => {
+    const run = async () => {
+      const { averey } = makeAverey({ recap: { chancePerRun: 1 } }, { ...on, seed: "same" });
+      return (await averey.run({ task: "Plan.", context })).trace.recap;
+    };
+    expect(await run()).toBe(await run());
+  });
+});
+
+describe("fakeRecap and distortNumber", () => {
+  it("changes a number", () => {
+    const r = fakeRecap("The budget: 40 dollars for the whole offsite.", new Rng("a"));
+    expect(r).toMatch(/budget: \d+ dollars for the whole offsite\.$/);
+    expect(r).not.toContain("40 dollars");
+  });
+
+  it("flips a decision when there is no number", () => {
+    const r = fakeRecap("Legal will approve the copy before launch.", new Rng("a"));
+    expect(r).toBe("I think we decided that legal will not approve the copy before launch.");
+  });
+
+  it("skips past filler to a sentence it can get wrong", () => {
+    const context = `${"Nothing much happened here today. ".repeat(30)}Legal will sign the contract on Friday.`;
+    for (let i = 0; i < 10; i++) {
+      expect(fakeRecap(context, new Rng(`f${i}`))).toBe(
+        "I think we decided that legal will not sign the contract on Friday.",
+      );
+    }
+  });
+
+  it("gives up when no sentence can be changed, and on code", () => {
+    expect(fakeRecap("Everyone loved the cake yesterday", new Rng("a"))).toBeUndefined();
+    expect(fakeRecap("```\nconst limit = 50 and more words here\n```", new Rng("a"))).toBeUndefined();
+  });
+
+  it("always moves the number it picks", () => {
+    for (let i = 0; i < 50; i++) {
+      const out = distortNumber("There are 7 boxes and 150 items", new Rng(`d${i}`))!;
+      expect(out).not.toBe("There are 7 boxes and 150 items");
+    }
+    expect(distortNumber("no digits here", new Rng("a"))).toBeUndefined();
   });
 });

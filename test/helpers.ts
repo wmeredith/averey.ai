@@ -37,6 +37,7 @@ export const TRAIT_MODIFIERS = [
   "sports",
   "dst",
   "bill",
+  "recap",
 ];
 
 /**

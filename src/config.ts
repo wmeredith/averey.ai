@@ -119,6 +119,13 @@ export interface AvereyConfig {
   dst: { enabled: boolean; region: DstRegion; multiplier: number };
   /** A sudden, specific money shock for one day, unlike the slow drift of `stress`. */
   bill: { chancePerDay: number; multiplier: number };
+  /** Relying on a half-remembered recap of a meeting Averey was not really in. */
+  recap: {
+    /** Chance per run that has `context`. */
+    chancePerRun: number;
+    /** Multiplies how much of the context Averey reads. */
+    contextMultiplier: number;
+  };
   /** Who is asking changes how Averey works. */
   audience: {
     /** A manager makes Averey hedge and take longer: minutes of effort are multiplied by this. */
@@ -400,6 +407,7 @@ export const DEFAULT_CONFIG: AvereyConfig = {
   sports: { chancePerWeekend: 0.25, untilHour: 12, multiplier: 0.88 },
   dst: { enabled: true, region: "US", multiplier: 0.92 },
   bill: { chancePerDay: 0.03, multiplier: 0.88 },
+  recap: { chancePerRun: 0.15, contextMultiplier: 0.5 },
   audience: { managerEffortMultiplier: 1.5 },
   agreeable: { chancePerRun: 0.15 },
   slackSpeed: { thresholdMinutes: 3, chancePerRun: 0.05, multiplier: 0.92 },
@@ -554,6 +562,8 @@ export function validateConfig(c: AvereyConfig): void {
     problems.push(`dst.region must be "US" or "EU" (got ${String(c.dst.region)})`);
   }
   prob("bill.chancePerDay", c.bill.chancePerDay);
+  prob("recap.chancePerRun", c.recap.chancePerRun);
+  prob("recap.contextMultiplier", c.recap.contextMultiplier);
   nonNeg("audience.managerEffortMultiplier", c.audience.managerEffortMultiplier);
   prob("agreeable.chancePerRun", c.agreeable.chancePerRun);
   nonNeg("slackSpeed.thresholdMinutes", c.slackSpeed.thresholdMinutes);
