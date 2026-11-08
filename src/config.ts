@@ -279,6 +279,17 @@ export const DEFAULT_CONFIG: AvereyConfig = {
         "Waiting on a text code to get back in, one sec.",
       ],
     },
+    {
+      id: "parent-call",
+      label: "call from a parent",
+      chancePerDay: 0.12,
+      minutes: [12, 25],
+      away: true,
+      awayLines: [
+        "Quick call, I need to take this.",
+        "My mom is calling, give me a bit.",
+      ],
+    },
   ],
 
   hours: { capHours: 8, windowHours: 24, decayK: 0.5 },
