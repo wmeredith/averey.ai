@@ -302,6 +302,21 @@ export const DEFAULT_CONFIG: AvereyConfig = {
         "They moved the desks around again, one sec.",
       ],
     },
+    {
+      id: "cake",
+      label: "birthday cake",
+      chancePerDay: 0.06,
+      minutes: [15, 25],
+      hourRange: [14, 16],
+      away: true,
+      aftermathMinutes: 45,
+      multiplier: 0.9,
+      hint: "You just had a big slice of birthday cake. The sugar rush is wearing off and you are crashing: jittery, sleepy, and a little giddy.",
+      awayLines: [
+        "There's birthday cake in the kitchen, be right back.",
+        "Singing happy birthday, give me a few.",
+      ],
+    },
   ],
 
   hours: { capHours: 8, windowHours: 24, decayK: 0.5 },

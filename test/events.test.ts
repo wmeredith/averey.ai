@@ -261,7 +261,7 @@ describe("life events: config checks", () => {
 describe("default office events", () => {
   const byId = (id: string) => DEFAULT_CONFIG.events.find((e) => e.id === id)!;
   const forced = (id: string): LifeEventConfig => ({ ...byId(id), chancePerDay: 1 });
-  const ids = ["snack", "package", "sso", "parent-call", "hot-desk"];
+  const ids = ["snack", "package", "sso", "parent-call", "hot-desk", "cake"];
 
   it("ships all of them next to the puzzle break", () => {
     expect(DEFAULT_CONFIG.events.map((e) => e.id)).toEqual(["games", ...ids]);
@@ -312,6 +312,19 @@ describe("default office events", () => {
     expect(r.status === "ok" && r.trace.systemPrompt).toContain("fuming at the login screen");
     clock.set(block.end + 46 * MIN);
     expect(averey.status().performance).toBeCloseTo(1, 5);
+  });
+
+  it("cake takes Averey away, then a sugar crash follows", () => {
+    const { averey, clock } = makeAverey({ events: [forced("cake")] });
+    const block = blockOf(averey, "cake")!;
+    clock.set(block.start + MIN);
+    expect(averey.availability().available).toBe(false);
+    clock.set(block.end + 10 * MIN);
+    const mod = averey.status().modifiers.find((m) => m.id === "cake");
+    expect(mod?.multiplier).toBe(0.9);
+    expect(averey.status().modifiers.find((m) => m.id === "cake")?.label).toContain("aftermath");
+    clock.set(block.end + 50 * MIN);
+    expect(averey.status().modifiers.map((m) => m.id)).not.toContain("cake");
   });
 
   it("each away event answers in its own words", async () => {
