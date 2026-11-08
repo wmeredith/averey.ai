@@ -53,6 +53,7 @@ const res = await averey.runWhenAvailable(
 | 20 min/day arguing online, -15% for an hour after | scheduled block | `argument` |
 | Compliment boost for 24h, 96h if sincere | sincerity scorer (heuristic or LLM) | `compliment` |
 | Budget stress | slow-drifting daily value, small penalty | `stress` |
+| Post-lunch crash (-12% for 90 min after a midday meal) | derived from the meal block | `lunch-dip` |
 | Misremembers tasks | lossy memory | n/a |
 | Defensive after being wrong, apologizes a day or two later | `reportError()` | `defensive`, `apology` |
 | Implicit bias | see below | n/a |

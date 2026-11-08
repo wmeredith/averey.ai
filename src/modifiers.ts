@@ -1,6 +1,6 @@
 import type { AvereyConfig } from "./config.js";
-import type { Schedule } from "./core/schedule.js";
-import { HOUR, MIN } from "./core/time.js";
+import type { Block, Schedule } from "./core/schedule.js";
+import { HOUR, MIN, localHour } from "./core/time.js";
 import { type WorkerState, hoursWorkedIn } from "./core/state.js";
 
 export interface Modifier {
@@ -102,6 +102,29 @@ const exposure: ModifierFn = (ctx) => {
     multiplier: ctx.config.sickness.contagionPenalty,
     hints: [
       "You were just around a sick coworker and you feel a little run down and off your game.",
+    ],
+  };
+};
+
+/** True when a block starts within the local-hour range [from, to). */
+function startsBetween(b: Block, offset: number, from: number, to: number): boolean {
+  const h = localHour(b.start, offset);
+  return h >= from && h < to;
+}
+
+const lunchDip: ModifierFn = (ctx) => {
+  const cfg = ctx.config.lunchDip;
+  const offset = ctx.config.utcOffsetMinutes;
+  const lunch = ctx.schedule
+    .recentBlocks("meal", ctx.now, cfg.windowMinutes * MIN)
+    .some((b) => startsBetween(b, offset, cfg.fromHour, cfg.toHour));
+  if (!lunch) return null;
+  return {
+    id: "lunch-dip",
+    label: "post-lunch crash",
+    multiplier: cfg.multiplier,
+    hints: [
+      "You just ate a big lunch and the afternoon slump has hit. You are foggy and slow and would love a nap, but you are still trying.",
     ],
   };
 };
@@ -226,6 +249,7 @@ export const MODIFIERS = Object.freeze({
   pissy: coffee,
   sick: sickness,
   exposed: exposure,
+  "lunch-dip": lunchDip,
   argument,
   salary,
   compliment,

@@ -52,6 +52,14 @@ export interface AvereyConfig {
     contagionPenalty: number;
     contagionHours: number;
   };
+  /** The starch crash after a midday meal. */
+  lunchDip: {
+    /** Only meals that started in this local-hour range count as lunch. */
+    fromHour: number;
+    toHour: number;
+    windowMinutes: number;
+    multiplier: number;
+  };
   argument: { minutesPerDay: number; penalty: number; penaltyMinutes: number };
   salary: {
     chancePerDay: number;
@@ -152,6 +160,7 @@ export const DEFAULT_CONFIG: AvereyConfig = {
     contagionPenalty: 0.9,
     contagionHours: 24,
   },
+  lunchDip: { fromHour: 11, toHour: 14, windowMinutes: 90, multiplier: 0.88 },
   argument: { minutesPerDay: 20, penalty: 0.85, penaltyMinutes: 60 },
   salary: {
     chancePerDay: 0.2,
@@ -267,6 +276,8 @@ export function validateConfig(c: AvereyConfig): void {
   ordered("hours.capHours", c.hours.capHours, "hours.windowHours", c.hours.windowHours);
   nonNeg("hours.decayK", c.hours.decayK);
   prob("tired.chancePerDay", c.tired.chancePerDay);
+  ordered("lunchDip.fromHour", c.lunchDip.fromHour, "lunchDip.toHour", c.lunchDip.toHour);
+  nonNeg("lunchDip.windowMinutes", c.lunchDip.windowMinutes);
   nonNeg("sickness.episodesPerYear", c.sickness.episodesPerYear);
   nonNeg("sickness.minDays", c.sickness.minDays);
   ordered("sickness.minDays", c.sickness.minDays, "sickness.maxDays", c.sickness.maxDays);

@@ -164,3 +164,53 @@ describe("disabling modifiers", () => {
     expect(perf(averey)).toBeCloseTo(1, 5);
   });
 });
+
+/** UTC timestamp on the week of MONDAY_9AM. `day` 0 = Monday .. 6 = Sunday. */
+function weekAt(day: number, hour: number, minute = 0): number {
+  return Date.UTC(2026, 10, 2 + day, hour, minute);
+}
+
+describe("post-lunch dip", () => {
+  // Lunch is exactly 12:15 to 12:45.
+  const lunch = {
+    breaks: {
+      meals: [{ centerHour: 12.5, minutes: [30, 30] as [number, number], jitterHours: 0 }],
+    },
+  };
+  const opts = { enable: ["lunch-dip"] };
+
+  it("hits for the window after a midday meal, then fades", () => {
+    const { averey, clock } = makeAverey(lunch, opts);
+    clock.set(weekAt(0, 12, 0));
+    expect(perf(averey)).toBeCloseTo(1, 5); // not eaten yet
+    clock.set(weekAt(0, 12, 50));
+    expect(perf(averey)).toBeCloseTo(0.88, 5);
+    expect(averey.status().modifiers.map((m) => m.id)).toContain("lunch-dip");
+    clock.set(weekAt(0, 14, 10));
+    expect(perf(averey)).toBeCloseTo(0.88, 5); // 85 minutes after
+    clock.set(weekAt(0, 14, 20));
+    expect(perf(averey)).toBeCloseTo(1, 5); // 95 minutes after
+  });
+
+  it("ignores meals outside the lunch hours", () => {
+    const { averey, clock } = makeAverey(
+      { breaks: { meals: [{ centerHour: 7.75, minutes: [20, 20], jitterHours: 0 }] } },
+      opts,
+    );
+    clock.set(weekAt(0, 8, 10));
+    expect(perf(averey)).toBeCloseTo(1, 5);
+  });
+
+  it("puts the slump in the system prompt", async () => {
+    const { averey, clock } = makeAverey(lunch, opts);
+    clock.set(weekAt(0, 12, 50));
+    const r = await averey.run({ task: "do a thing" });
+    expect(r.status === "ok" && r.trace.systemPrompt).toContain("afternoon slump");
+  });
+
+  it("can be switched off", () => {
+    const { averey, clock } = makeAverey({ ...lunch, disabledModifiers: ["stress", "pissy", "lunch-dip"] });
+    clock.set(weekAt(0, 12, 50));
+    expect(perf(averey)).toBeCloseTo(1, 5);
+  });
+});

@@ -9,10 +9,25 @@ import {
 /** Monday 2026-11-02 09:00 UTC. */
 export const MONDAY_9AM = Date.UTC(2026, 10, 2, 9, 0);
 
-/** A config where nothing random happens unless a test turns it on. */
+/**
+ * Trait modifiers that are off in tests unless a test names them in `enable`.
+ * Add each new trait's modifier id here when it ships.
+ */
+export const TRAIT_MODIFIERS = [
+  "lunch-dip",
+];
+
+/**
+ * A config where nothing random happens unless a test turns it on.
+ * `enable` re-activates modifiers (including "stress" and "pissy") by id.
+ */
 export function quietConfig(
   overrides: DeepPartial<AvereyConfig> = {},
+  enable: string[] = [],
 ): DeepPartial<AvereyConfig> {
+  const disabledModifiers = [
+    ...new Set([...(overrides.disabledModifiers ?? ["stress", "pissy"]), ...TRAIT_MODIFIERS]),
+  ].filter((id) => !enable.includes(id));
   return {
     utcOffsetMinutes: 0,
     tired: { chancePerDay: 0 },
@@ -26,8 +41,8 @@ export function quietConfig(
     },
     comprehension: { enabled: false },
     memory: { baseDistortChance: 0, fatigueWeight: 0, stressWeight: 0, ageWeight: 0 },
-    disabledModifiers: ["stress", "pissy"],
     ...overrides,
+    disabledModifiers,
   };
 }
 
@@ -37,6 +52,8 @@ export function makeAverey(
     start?: number;
     seed?: string;
     provider?: MockProvider;
+    /** Modifier ids to turn back on (see `quietConfig`). */
+    enable?: string[];
   } = {},
 ) {
   const clock = new VirtualClock(options.start ?? MONDAY_9AM);
@@ -45,7 +62,7 @@ export function makeAverey(
     provider,
     clock,
     seed: options.seed ?? "test",
-    config: quietConfig(config),
+    config: quietConfig(config, options.enable),
   });
   return { averey, clock, provider };
 }
