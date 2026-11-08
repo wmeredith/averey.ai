@@ -63,6 +63,7 @@ const res = await averey.runWhenAvailable(
 | Coffee crash (-10% for 45 min, about 90 min after coffee) | derived from first engagement | `coffee-crash` |
 | Hangry in the hour before a midday meal | derived from the meal block | `hangry` |
 | Rushing to leave, ramping from 4:30 to 6 PM (-15%) | local hour | `eod-rush` |
+| Winter gloom (Nov to Feb, -5%) | local month | `seasonal` |
 | Misremembers tasks | lossy memory | n/a |
 | Defensive after being wrong, apologizes a day or two later | `reportError()` | `defensive`, `apology` |
 | Implicit bias | see below | n/a |

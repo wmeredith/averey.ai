@@ -23,6 +23,7 @@ export const TRAIT_MODIFIERS = [
   "coffee-crash",
   "hangry",
   "eod-rush",
+  "seasonal",
 ];
 
 /**

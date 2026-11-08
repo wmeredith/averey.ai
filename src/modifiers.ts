@@ -1,6 +1,6 @@
 import type { AvereyConfig } from "./config.js";
 import type { Block, Schedule } from "./core/schedule.js";
-import { HOUR, MIN, localHour, localWeekday } from "./core/time.js";
+import { HOUR, MIN, localHour, localMonth, localWeekday } from "./core/time.js";
 import { type WorkerState, hoursWorkedIn } from "./core/state.js";
 
 export interface Modifier {
@@ -220,6 +220,20 @@ const eodRush: ModifierFn = (ctx) => {
   };
 };
 
+/** Short, dark winter days. */
+const seasonal: ModifierFn = (ctx) => {
+  const cfg = ctx.config.seasonal;
+  if (!cfg.months.includes(localMonth(ctx.now, ctx.config.utcOffsetMinutes))) return null;
+  return {
+    id: "seasonal",
+    label: "winter gloom",
+    multiplier: cfg.multiplier,
+    hints: [
+      "It is dark when you get up and dark when you leave. You feel a little low and sluggish, and it is hard to get motivated.",
+    ],
+  };
+};
+
 /** A word Averey was just taught goes everywhere, even where it does not fit. */
 const honeymoon: ModifierFn = (ctx) => {
   const cfg = ctx.config.honeymoon;
@@ -366,6 +380,7 @@ export const MODIFIERS = Object.freeze({
   monday,
   hangry,
   "eod-rush": eodRush,
+  seasonal,
   honeymoon,
   argument,
   salary,

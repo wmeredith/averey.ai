@@ -455,3 +455,37 @@ describe("rushing at the end of the day", () => {
     expect(r.status === "ok" && r.trace.systemPrompt).toContain("watching the clock");
   });
 });
+
+describe("seasonal gloom", () => {
+  const opts = { enable: ["seasonal"] };
+
+  it("applies in winter months only", () => {
+    const { averey, clock } = makeAverey({}, opts);
+    clock.set(Date.UTC(2026, 10, 10, 12)); // November
+    expect(perf(averey)).toBeCloseTo(0.95, 5);
+    clock.set(Date.UTC(2027, 0, 10, 12)); // January
+    expect(perf(averey)).toBeCloseTo(0.95, 5);
+    clock.set(Date.UTC(2027, 2, 10, 12)); // March
+    expect(perf(averey)).toBeCloseTo(1, 5);
+    clock.set(Date.UTC(2027, 6, 10, 12)); // July
+    expect(perf(averey)).toBeCloseTo(1, 5);
+  });
+
+  it("uses local months, so southern hemisphere callers can flip it", () => {
+    // 02:00 UTC on March 1 is still February at UTC-5.
+    const ts = Date.UTC(2027, 2, 1, 2);
+    const west = makeAverey({ utcOffsetMinutes: -300 }, opts);
+    west.clock.set(ts);
+    expect(perf(west.averey)).toBeCloseTo(0.95, 5);
+    const utc = makeAverey({}, opts);
+    utc.clock.set(ts);
+    expect(perf(utc.averey)).toBeCloseTo(1, 5);
+    const south = makeAverey({ seasonal: { months: [5, 6, 7, 8] } }, opts);
+    south.clock.set(Date.UTC(2027, 5, 10, 12));
+    expect(perf(south.averey)).toBeCloseTo(0.95, 5);
+  });
+
+  it("rejects months that are not 1 to 12", () => {
+    expect(() => resolveConfig({ seasonal: { months: [0, 13] } })).toThrow(/seasonal\.months/);
+  });
+});

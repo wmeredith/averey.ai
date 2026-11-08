@@ -64,6 +64,8 @@ export interface AvereyConfig {
   hangry: { fromHour: number; toHour: number; windowMinutes: number; multiplier: number };
   /** Rushing to leave on time: performance ramps down toward the end of the day. */
   eodRush: { fromHour: number; rampEndHour: number; multiplier: number };
+  /** A small winter drag. Months are 1..12 in local time. */
+  seasonal: { months: number[]; multiplier: number };
   /** Overusing a word Averey was just taught the meaning of. */
   honeymoon: { hours: number; multiplier: number };
   /** Reusing an earlier answer for a similar request instead of starting over. */
@@ -201,6 +203,7 @@ export const DEFAULT_CONFIG: AvereyConfig = {
   },
   hangry: { fromHour: 11, toHour: 14, windowMinutes: 60, multiplier: 0.93 },
   eodRush: { fromHour: 16.5, rampEndHour: 18, multiplier: 0.85 },
+  seasonal: { months: [11, 12, 1, 2], multiplier: 0.95 },
   honeymoon: { hours: 48, multiplier: 1 },
   reuse: { chance: 0.7, minOverlap: 0.5, maxItems: 5 },
   notification: { chancePerRun: 0.12 },
@@ -311,6 +314,13 @@ export function validateConfig(c: AvereyConfig): void {
     nonNeg(`${path}[0]`, lo);
     if (!(lo <= hi)) problems.push(`${path} must be [min, max] with min <= max (got [${lo}, ${hi}])`);
   };
+  const months = (path: string, list: number[]) => {
+    for (const m of list) {
+      if (!Number.isInteger(m) || m < 1 || m > 12) {
+        problems.push(`${path} must only contain months 1..12 (got ${m})`);
+      }
+    }
+  };
   const ordered = (loPath: string, lo: number, hiPath: string, hi: number) => {
     if (!(lo <= hi)) problems.push(`${loPath} (${lo}) must be <= ${hiPath} (${hi})`);
   };
@@ -332,6 +342,7 @@ export function validateConfig(c: AvereyConfig): void {
   nonNeg("hangry.windowMinutes", c.hangry.windowMinutes);
   ordered("eodRush.fromHour", c.eodRush.fromHour, "eodRush.rampEndHour", c.eodRush.rampEndHour);
   nonNeg("eodRush.fromHour", c.eodRush.fromHour);
+  months("seasonal.months", c.seasonal.months);
   nonNeg("honeymoon.hours", c.honeymoon.hours);
   prob("reuse.chance", c.reuse.chance);
   prob("reuse.minOverlap", c.reuse.minOverlap);
