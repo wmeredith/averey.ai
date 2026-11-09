@@ -1,6 +1,6 @@
 # Averey.ai
 
-An average intelligence harness. It wraps any LLM with a simulated average human worker: one who reads at a 7th-8th grade level, needs coffee, takes breaks, gets sick, holds grudges for a day, and misremembers what you asked.
+An average intelligence harness. It wraps any LLM with a simulated average human worker: one who reads at a 7th-8th grade level, needs coffee, takes breaks, gets sick, holds grudges for a day, gets distracted by a phone buzz or a package at the door, and misremembers what you asked.
 
 This is a harness, not a prompt. The behavior is enforced in code (a clock, state, a seeded RNG), so it is reproducible and testable. The model only sees the *results* as prompt text and API settings.
 
@@ -28,6 +28,20 @@ const res = await averey.runWhenAvailable(
 );
 // res.taskId can be passed as `continues` later; res.trace.truncated says if the reply hit the token limit.
 ```
+
+### What you can pass to `run`
+
+| Field | What it does |
+| --- | --- |
+| `task` | The request. Required. |
+| `context` | Background material. Averey only reads part of it when performing poorly. |
+| `glossary` | Meanings for words Averey asked about. Averey remembers them (and overuses them for a while). |
+| `continues` | The `taskId` of an earlier job. Averey recalls it, possibly wrongly, and may stick with the approach they already chose. |
+| `effortMinutes` | Simulated minutes of work the call counts for. Under 3 can make it a rushed reply. |
+| `audience` | `"manager"` makes Averey hedge and take 50% longer. `AvereyTeam.send` sets it from a sender labeled `role=manager`. |
+| `shared` | A job shared with others. Averey assumes someone else has the hard part. `AvereyTeam.send` sets it for teams of 3 or more. |
+| `lastHeard` | `{ from, text }` for what Averey heard just before, which they may echo. `AvereyTeam.send` fills it in. |
+| `history`, `signal` | Earlier conversation turns, and an `AbortSignal` to cancel the model call. |
 
 ## How a call works
 
@@ -145,7 +159,8 @@ console.table(team.biasReport());
 - `FileStateStore("./.averey-state.json")` keeps hours worked, compliments, grudges, and memory across restarts. Without it, every new process is a fresh morning (no coffee yet). A corrupt file logs a warning and starts fresh.
 - Calls are booked back to back, like one person working through a queue, so a burst of requests adds hours gradually instead of all at once.
 - `averey.status()` shows current performance, active modifiers, hours worked, and availability without making a call.
-- Every result has a `trace` (modifiers, levers, comprehension, memory, typo count, system prompt).
+- Every result has a `trace`: modifiers, levers, comprehension, memory, typo count, system prompt, and a field for each task effect that fired (`notification`, `reusedFrom`, `overconfident`, `imposter`, `inflated`, `sunkCost`, `audience`, `loafing`, `echoed`, `agreed`, `slackSpeed`, `recap`).
+- The same seed always gives the same bad days, breaks, and events. Each random trait rolls on its own stream, so adding or disabling one does not reshuffle the others.
 
 ```sh
 npm run simulate -- --days 14 --seed demo      # daily summary
